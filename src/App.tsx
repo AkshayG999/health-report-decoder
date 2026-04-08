@@ -182,7 +182,19 @@ export default function App() {
               className="max-w-3xl mx-auto"
             >
               <div className="text-center mb-12">
-                <h2 className="text-4xl md:text-4xl font-extrabold text-slate-900 mb-6 tracking-tight leading-[1.1]">
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: 0.2 }}
+                  className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-sky-50 text-sky-600 text-xs font-bold uppercase tracking-wider mb-6 border border-sky-100"
+                >
+                  <span className="relative flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-sky-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-sky-500"></span>
+                  </span>
+                  AI-Powered Analysis
+                </motion.div>
+                <h2 className="text-4xl md:text-5xl font-extrabold text-slate-900 mb-6 tracking-tight leading-[1.1]">
                   Understand your health <br /> 
                   <span className="text-sky-600">with clarity.</span>
                 </h2>
