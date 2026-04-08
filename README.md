@@ -24,8 +24,12 @@ MedInsight AI is an AI-powered medical report analyzer that simplifies complex l
 ### 1. Upload Screen
 The entry point where users can select their preferred language and upload their medical reports (PDF, PNG, JPG).
 
+![Upload Screen](/public/image-1.png)
+
 ### 2. Processing Screen
 A real-time feedback screen that keeps users informed while the AI extracts data, translates terminology, and generates recommendations.
+
+![Processing Screen](/public/image-2.png)
 
 ### 3. Result Screen
 A comprehensive dashboard featuring:
@@ -33,6 +37,9 @@ A comprehensive dashboard featuring:
 - **Personalized Insights**: Encouraging insights and specific health recommendations.
 - **Doctor's Visit Prep**: A curated list of questions to ask during the next consultation.
 - **Trusted Resources**: Direct links to authoritative medical information.
+
+![Result Screen 1](/public/image-3.png)
+![Result Screen 2](/public/image-4.png)
 
 ## Disclaimer
 
