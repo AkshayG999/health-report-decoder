@@ -24,10 +24,10 @@ import { cn } from "@/src/lib/utils";
 import { reportProcessor } from "@/src/lib/reportGraph";
 
 interface ReportResult {
-  simplifiedReport: string;
-  recommendations: string[];
-  insights: string;
-  resources: { title: string; url: string }[];
+  simplifiedReport?: string;
+  recommendations?: string[];
+  insights?: string;
+  resources?: { title: string; url: string }[];
 }
 
 export default function App() {
@@ -37,6 +37,7 @@ export default function App() {
   const [result, setResult] = useState<ReportResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [language, setLanguage] = useState<string>("English");
+  const [processingStatus, setProcessingStatus] = useState<string>("");
 
   const languages = [
     { name: "English", native: "English", flag: "🇬🇧" },
@@ -83,19 +84,36 @@ export default function App() {
     try {
       const base64Data = await fileToBase64(file);
       
-      const response = await reportProcessor.invoke({
+      const stream = await reportProcessor.stream({
         fileData: base64Data,
         mimeType: file.type,
         language: language,
-      });
+      }, { streamMode: "updates" });
 
-      setResult({
-        simplifiedReport: response.simplifiedReport,
-        recommendations: response.recommendations,
-        insights: response.insights,
-        resources: response.resources || [],
-      });
-      setStep("result");
+      let currentResult: ReportResult = {};
+
+      for await (const chunk of stream) {
+        const nodeName = Object.keys(chunk)[0];
+        const data = chunk[nodeName];
+
+        if (nodeName === "extract") {
+          setProcessingStatus("Simplifying medical terms...");
+        } else if (nodeName === "simplify") {
+          currentResult = { ...currentResult, simplifiedReport: data.simplifiedReport };
+          setResult(currentResult);
+          setStep("result"); // Transition to result screen as soon as summary is ready
+          setProcessingStatus("Generating recommendations...");
+        } else if (nodeName === "recommend") {
+          currentResult = { 
+            ...currentResult, 
+            recommendations: data.recommendations,
+            insights: data.insights,
+            resources: data.resources
+          };
+          setResult(currentResult);
+          setProcessingStatus("");
+        }
+      }
     } catch (err) {
       console.error("Processing error:", err);
       setError("Failed to process the report. Please ensure the file is clear and try again.");
@@ -317,7 +335,9 @@ export default function App() {
                   <Activity size={48} />
                 </div>
               </div>
-              <h2 className="text-3xl font-extrabold text-slate-900 mb-4 tracking-tight">AI is Thinking...</h2>
+              <h2 className="text-3xl font-extrabold text-slate-900 mb-4 tracking-tight">
+                {processingStatus || "AI is Thinking..."}
+              </h2>
               <p className="text-slate-500 font-medium leading-relaxed">
                 We're extracting measurements and translating medical terminology for you.
               </p>
@@ -361,25 +381,39 @@ export default function App() {
                   className="lg:col-span-8 bg-white rounded-[2.5rem] p-10 shadow-xl shadow-slate-200/50 border border-slate-100"
                 >
                   <div className="flex items-center justify-between mb-10">
-                    <div className="flex items-center gap-4">
-                      <div className="p-3 bg-sky-50 text-sky-600 rounded-2xl shadow-inner">
-                        <FileText size={28} />
+                      <div className="flex items-center gap-4">
+                        <div className="p-3 bg-sky-50 text-sky-600 rounded-2xl shadow-inner">
+                          <FileText size={28} />
+                        </div>
+                        <div>
+                          <h2 className="text-2xl font-extrabold text-slate-900 tracking-tight">Report Summary</h2>
+                          <p className="text-sm font-bold text-slate-400 uppercase tracking-widest mt-1">Simplified View</p>
+                        </div>
                       </div>
-                      <div>
-                        <h2 className="text-2xl font-extrabold text-slate-900 tracking-tight">Report Summary</h2>
-                        <p className="text-sm font-bold text-slate-400 uppercase tracking-widest mt-1">Simplified View</p>
+                      <div className={cn(
+                        "hidden sm:flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold border transition-all",
+                        result.recommendations ? "bg-emerald-50 text-emerald-600 border-emerald-100" : "bg-sky-50 text-sky-600 border-sky-100 animate-pulse"
+                      )}>
+                        {result.recommendations ? (
+                          <><CheckCircle2 size={14} /> Analysis Complete</>
+                        ) : (
+                          <><Loader2 size={14} className="animate-spin" /> Processing...</>
+                        )}
                       </div>
                     </div>
-                    <div className="hidden sm:flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-50 text-emerald-600 text-xs font-bold border border-emerald-100">
-                      <CheckCircle2 size={14} />
-                      Analysis Complete
+                    
+                    <div className="markdown-content">
+                      {result.simplifiedReport ? (
+                        <Markdown>{result.simplifiedReport}</Markdown>
+                      ) : (
+                        <div className="space-y-4">
+                          <div className="h-4 bg-slate-100 rounded w-3/4 animate-pulse"></div>
+                          <div className="h-4 bg-slate-100 rounded w-full animate-pulse"></div>
+                          <div className="h-4 bg-slate-100 rounded w-5/6 animate-pulse"></div>
+                        </div>
+                      )}
                     </div>
-                  </div>
-                  
-                  <div className="markdown-content">
-                    <Markdown>{result.simplifiedReport}</Markdown>
-                  </div>
-                </motion.section>
+                  </motion.section>
 
                 {/* Sidebar - Prep & Disclaimer */}
                 <div className="lg:col-span-4 space-y-8">
@@ -445,43 +479,56 @@ export default function App() {
                         </div>
                         <h2 className="text-2xl font-extrabold text-slate-900 tracking-tight">Personalized Insights</h2>
                       </div>
-                      <blockquote className="text-xl font-bold text-slate-800 leading-relaxed mb-8 italic border-l-4 border-sky-500 pl-6">
-                        "{result.insights}"
-                      </blockquote>
+                      
+                      {result.insights ? (
+                        <blockquote className="text-xl font-bold text-slate-800 leading-relaxed mb-8 italic border-l-4 border-sky-500 pl-6">
+                          "{result.insights}"
+                        </blockquote>
+                      ) : (
+                        <div className="h-12 bg-slate-100 rounded w-full animate-pulse mb-8"></div>
+                      )}
+
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {result.recommendations.map((rec, i) => (
-                          <motion.div 
-                            key={i} 
-                            whileHover={{ y: -2 }}
-                            className="flex gap-4 p-5 rounded-2xl bg-white border border-slate-100 shadow-sm hover:shadow-md transition-all"
-                          >
-                            <div className="shrink-0 w-8 h-8 rounded-full bg-sky-50 flex items-center justify-center text-xs font-black text-sky-600">
-                              {i + 1}
-                            </div>
-                            <p className="text-slate-700 font-medium leading-relaxed">{rec}</p>
-                          </motion.div>
-                        ))}
+                        {result.recommendations ? (
+                          result.recommendations.map((rec, i) => (
+                            <motion.div 
+                              key={i} 
+                              whileHover={{ y: -2 }}
+                              className="flex gap-4 p-5 rounded-2xl bg-white border border-slate-100 shadow-sm hover:shadow-md transition-all"
+                            >
+                              <div className="shrink-0 w-8 h-8 rounded-full bg-sky-50 flex items-center justify-center text-xs font-black text-sky-600">
+                                {i + 1}
+                              </div>
+                              <p className="text-slate-700 font-medium leading-relaxed">{rec}</p>
+                            </motion.div>
+                          ))
+                        ) : (
+                          [1, 2, 3, 4].map(i => (
+                            <div key={i} className="h-20 bg-slate-100 rounded-2xl animate-pulse"></div>
+                          ))
+                        )}
                       </div>
                     </div>
                   </div>
                 </motion.section>
 
                 {/* Resources - Full Width */}
-                {result.resources && result.resources.length > 0 && (
-                  <motion.section 
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.5 }}
-                    className="lg:col-span-12 bg-white rounded-[2.5rem] p-10 shadow-xl shadow-slate-200/50 border border-slate-100"
-                  >
-                    <div className="flex items-center gap-4 mb-10">
-                      <div className="p-3 bg-emerald-50 text-emerald-600 rounded-2xl shadow-inner">
-                        <ExternalLink size={28} />
-                      </div>
-                      <h2 className="text-2xl font-extrabold text-slate-900 tracking-tight">Trusted Resources</h2>
+                <motion.section 
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.5 }}
+                  className="lg:col-span-12 bg-white rounded-[2.5rem] p-10 shadow-xl shadow-slate-200/50 border border-slate-100"
+                >
+                  <div className="flex items-center gap-4 mb-10">
+                    <div className="p-3 bg-emerald-50 text-emerald-600 rounded-2xl shadow-inner">
+                      <ExternalLink size={28} />
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                      {result.resources.map((resource, i) => (
+                    <h2 className="text-2xl font-extrabold text-slate-900 tracking-tight">Trusted Resources</h2>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {result.resources ? (
+                      result.resources.map((resource, i) => (
                         <motion.a 
                           key={i} 
                           href={resource.url} 
@@ -495,10 +542,14 @@ export default function App() {
                             <ExternalLink size={18} />
                           </div>
                         </motion.a>
-                      ))}
-                    </div>
-                  </motion.section>
-                )}
+                      ))
+                    ) : (
+                      [1, 2, 3].map(i => (
+                        <div key={i} className="h-24 bg-slate-100 rounded-3xl animate-pulse"></div>
+                      ))
+                    )}
+                  </div>
+                </motion.section>
               </div>
             </motion.div>
           )}
