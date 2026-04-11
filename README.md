@@ -21,25 +21,42 @@ MedInsight AI is an AI-powered medical report analyzer that simplifies complex l
 
 ## Application Screens
 
-### 1. Upload Screen
-The entry point where users can select their preferred language and upload their medical reports (PDF, PNG, JPG).
+The application includes the following main screens:
 
-![Upload Screen](/public/image-1.png)
-
-### 2. Processing Screen
-A real-time feedback screen that keeps users informed while the AI extracts data, translates terminology, and generates recommendations.
-
-![Processing Screen](/public/image-2.png)
-
-### 3. Result Screen
-A comprehensive dashboard featuring:
 - **Report Summary**: A structured, easy-to-read breakdown of the findings.
 - **Personalized Insights**: Encouraging insights and specific health recommendations.
 - **Doctor's Visit Prep**: A curated list of questions to ask during the next consultation.
 - **Trusted Resources**: Direct links to authoritative medical information.
 
-![Result Screen 1](/public/image-3.png)
-![Result Screen 2](/public/image-4.png)
+<table>
+  <tr>
+    <td width="50%">
+      <strong>Upload Screen</strong><br />
+      <img src="public/image-1.png" alt="Upload Screen" width="100%" />
+    </td>
+    <td width="50%">
+      <strong>Processing Screen</strong><br />
+      <img src="public/image-2.png" alt="Processing Screen" width="100%" />
+    </td>
+  </tr>
+  <tr>
+    <td width="50%">
+      <strong>Result Screen</strong><br />
+      <img src="public/image-3.png" alt="Result Screen" width="100%" />
+    </td>
+    <td width="50%">
+      <strong>Insights Screen</strong><br />
+      <img src="public/image-4.png" alt="Insights Screen" width="100%" />
+    </td>
+  </tr>
+  <tr>
+    <td width="50%">
+      <strong>Saved Reports Screen</strong><br />
+      <img src="public/image-5.png" alt="Saved Reports Screen" width="100%" />
+    </td>
+    <td width="50%"></td>
+  </tr>
+</table>
 
 ## Disclaimer
 

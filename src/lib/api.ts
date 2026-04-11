@@ -88,10 +88,37 @@ function parseJsonField<T>(value: string | T | undefined, fallback: T): T | unde
   }
 }
 
+function splitRecommendationText(content: string): string[] {
+  const normalized = content
+    .replace(/\r\n/g, '\n')
+    .replace(/(?<!^)\s+(\d+\.\s+)/g, '\n$1')
+    .replace(/(?<!^)\s+([*•-]\s+)/g, '\n$1');
+
+  const items = normalized
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((line) => /^(\d+\.|[*•-])\s+/.test(line))
+    .map((line) => line.replace(/^\d+\.\s*/, '').replace(/^[*•-]\s*/, '').trim())
+    .filter(Boolean);
+
+  return items.length > 0 ? items : [content];
+}
+
+function normalizeRecommendations(recommendations: string[] | undefined): string[] | undefined {
+  if (!recommendations) return undefined;
+
+  return recommendations
+    .flatMap((recommendation) => splitRecommendationText(recommendation))
+    .map((recommendation) => recommendation.trim())
+    .filter(Boolean);
+}
+
 function parseSavedReport(report: SavedReportAPIResponse): SavedReport {
+  const recommendations = parseJsonField(report.recommendations, [] as string[]);
+
   return {
     ...report,
-    recommendations: parseJsonField(report.recommendations, [] as string[]),
+    recommendations: normalizeRecommendations(recommendations),
     resources: parseJsonField(report.resources, [] as { title: string; url: string }[]),
   };
 }
