@@ -1,5 +1,5 @@
 {
   "name": "MedInsight AI",
-  "description": "AI-powered medical report analyzer that simplifies lab and imaging reports into actionable insights and recommendations.",
+  "description": "Open-source AI health report decoder and medical report analyzer that turns lab reports, imaging reports, and clinical documents into simple multilingual summaries, recommendations, and doctor visit questions.",
   "requestFramePermissions": []
 }
