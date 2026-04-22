@@ -18,11 +18,13 @@ import {
   Lightbulb,
   Loader2,
   RefreshCcw,
-  ExternalLink
+  ExternalLink,
+  Download
 } from "lucide-react";
 import { cn } from "@/src/lib/utils";
 import { reportProcessor } from "@/src/lib/reportGraph";
 import { getAllReports, getReportById, saveReport as saveReportToAPI, SavedReport, updateReportAnalysis } from "@/src/lib/api";
+import { exportReportSummaryPdf } from "@/src/lib/pdfExport";
 
 interface ReportResult {
   simplifiedReport?: string;
@@ -216,11 +218,27 @@ export default function App() {
         insights: report.insights,
         resources: report.resources,
       });
+      setLanguage(report.language);
       setStep("result");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not open this report.");
     } finally {
       setHistoryLoading(false);
+    }
+  };
+
+  const exportReportSummary = () => {
+    if (!result?.simplifiedReport) return;
+
+    try {
+      exportReportSummaryPdf({
+        language,
+        summary: result.simplifiedReport,
+        insights: result.insights,
+        recommendations: result.recommendations,
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not export report summary as PDF.");
     }
   };
 
@@ -590,6 +608,17 @@ export default function App() {
               animate={{ opacity: 1 }}
               className="space-y-6"
             >
+              {error && (
+                <motion.div 
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="p-4 bg-rose-50 border border-rose-100 rounded-lg flex items-start gap-3 text-rose-700 shadow-sm"
+                >
+                  <AlertCircle className="shrink-0 mt-0.5" size={20} />
+                  <p className="text-sm font-medium leading-relaxed">{error}</p>
+                </motion.div>
+              )}
+
               {/* Result Bento Grid */}
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
                 
@@ -609,15 +638,26 @@ export default function App() {
                           <p className="text-sm font-bold text-slate-500 uppercase tracking-widest mt-1">Simplified View</p>
                         </div>
                       </div>
-                      <div className={cn(
-                        "inline-flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold border transition-all w-fit",
-                        result.recommendations ? "bg-emerald-50 text-emerald-700 border-emerald-100" : "bg-teal-50 text-teal-700 border-teal-100 animate-pulse"
-                      )}>
-                        {result.recommendations ? (
-                          <><CheckCircle2 size={14} /> Analysis Complete</>
-                        ) : (
-                          <><Loader2 size={14} className="animate-spin" /> Processing...</>
-                        )}
+                      <div className="flex flex-wrap items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={exportReportSummary}
+                          disabled={!result.simplifiedReport}
+                          className="min-h-10 px-4 rounded-lg text-sm font-bold bg-teal-700 text-white hover:bg-teal-800 disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+                        >
+                          <Download size={16} />
+                          Export PDF
+                        </button>
+                        <div className={cn(
+                          "inline-flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold border transition-all w-fit",
+                          result.recommendations ? "bg-emerald-50 text-emerald-700 border-emerald-100" : "bg-teal-50 text-teal-700 border-teal-100 animate-pulse"
+                        )}>
+                          {result.recommendations ? (
+                            <><CheckCircle2 size={14} /> Analysis Complete</>
+                          ) : (
+                            <><Loader2 size={14} className="animate-spin" /> Processing...</>
+                          )}
+                        </div>
                       </div>
                     </div>
                     
@@ -693,10 +733,12 @@ export default function App() {
                   <div className="flex flex-col md:flex-row md:items-start justify-between gap-8">
                     <div className="flex-1">
                       <div className="flex items-center gap-4 mb-6">
-                        <div className="p-3 bg-amber-50 text-amber-700 rounded-lg">
-                          <Lightbulb size={28} />
+                        <div className="flex items-center gap-4">
+                          <div className="p-3 bg-amber-50 text-amber-700 rounded-lg">
+                            <Lightbulb size={28} />
+                          </div>
+                          <h2 className="text-2xl font-extrabold text-slate-900 tracking-tight">Personalized Insights</h2>
                         </div>
-                        <h2 className="text-2xl font-extrabold text-slate-900 tracking-tight">Personalized Insights</h2>
                       </div>
                       
                       {result.insights ? (
