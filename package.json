@@ -1,32 +1,7 @@
 {
-  "name": "health-report-decoder",
+  "name": "react-example",
   "private": true,
-  "version": "1.0.0",
-  "description": "AI medical report analyzer that decodes lab reports, health reports, and imaging results into simple multilingual summaries using React, LangGraph, and Gemini.",
-  "keywords": [
-    "health-report-decoder",
-    "medical-report-analyzer",
-    "ai-health-report-decoder",
-    "lab-report-analyzer",
-    "medical-report-summary",
-    "healthcare-ai",
-    "gemini-ai",
-    "langgraph",
-    "react",
-    "vite",
-    "typescript",
-    "multilingual-healthcare",
-    "patient-friendly-medical-reports"
-  ],
-  "homepage": "https://github.com/AkshayG999/health-report-decoder#readme",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/AkshayG999/health-report-decoder.git"
-  },
-  "bugs": {
-    "url": "https://github.com/AkshayG999/health-report-decoder/issues"
-  },
-  "license": "Apache-2.0",
+  "version": "0.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite --port=3000 --host=0.0.0.0",
