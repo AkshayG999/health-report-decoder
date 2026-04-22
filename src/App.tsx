@@ -13,6 +13,7 @@ import {
   CheckCircle2, 
   AlertCircle, 
   ChevronRight, 
+  ArrowLeft,
   Activity, 
   Stethoscope, 
   Lightbulb,
@@ -43,6 +44,7 @@ export default function App() {
   const [reports, setReports] = useState<SavedReport[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [pdfExporting, setPdfExporting] = useState(false);
+  const [resultSource, setResultSource] = useState<"analysis" | "history">("analysis");
 
   const languages = [
     { name: "English", native: "English", flag: "🇬🇧" },
@@ -131,6 +133,7 @@ export default function App() {
         } else if (nodeName === "simplify") {
           currentResult = { ...currentResult, simplifiedReport: data.simplifiedReport };
           setResult(currentResult);
+          setResultSource("analysis");
           setStep("result"); // Transition to result screen as soon as summary is ready
           setProcessingStatus("Generating recommendations...");
         } else if (nodeName === "recommend") {
@@ -186,6 +189,7 @@ export default function App() {
   const reset = () => {
     setFile(null);
     setResult(null);
+    setResultSource("analysis");
     setStep("upload");
     setError(null);
   };
@@ -205,6 +209,16 @@ export default function App() {
     }
   };
 
+  const backToUpload = () => {
+    setStep("upload");
+    setError(null);
+  };
+
+  const backToHistory = () => {
+    setStep("history");
+    setError(null);
+  };
+
   const openSavedReport = async (reportId: string) => {
     setHistoryLoading(true);
     setError(null);
@@ -219,6 +233,7 @@ export default function App() {
         resources: report.resources,
       });
       setLanguage(report.language);
+      setResultSource("history");
       setStep("result");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not open this report.");
@@ -542,11 +557,21 @@ export default function App() {
               exit={{ opacity: 0, y: -30 }}
               className="max-w-4xl mx-auto"
             >
-              <div className="mb-10">
-                <h2 className="text-3xl font-extrabold text-slate-900 mb-3 tracking-tight">Saved Reports</h2>
-                <p className="text-slate-500 font-medium">
-                  Open a completed report to view the saved summary, recommendations, and resources.
-                </p>
+              <div className="mb-8 space-y-4">
+                <button
+                  type="button"
+                  onClick={backToUpload}
+                  className="h-9 px-2 -ml-2 rounded-md text-sm font-bold text-slate-600 hover:text-teal-700 hover:bg-teal-50 transition-colors flex items-center gap-1.5 w-fit"
+                >
+                  <ArrowLeft size={16} />
+                  Back
+                </button>
+                <div>
+                  <h2 className="text-3xl font-extrabold text-slate-900 mb-3 tracking-tight">Saved Reports</h2>
+                  <p className="text-slate-500 font-medium">
+                    Open a completed report to view the saved summary, recommendations, and resources.
+                  </p>
+                </div>
               </div>
 
               {error && (
@@ -655,6 +680,16 @@ export default function App() {
                         </div>
                       </div>
                       <div className="flex flex-wrap items-center gap-2">
+                        {resultSource === "history" && (
+                          <button
+                            type="button"
+                            onClick={backToHistory}
+                            className="h-10 px-2 rounded-md text-sm font-bold text-slate-600 hover:text-teal-700 hover:bg-teal-50 transition-colors flex items-center gap-1.5"
+                          >
+                            <ArrowLeft size={16} />
+                            Saved Reports
+                          </button>
+                        )}
                         <button
                           type="button"
                           onClick={exportReportSummary}
