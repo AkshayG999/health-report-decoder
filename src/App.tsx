@@ -231,17 +231,23 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-[#f6f8f7] text-slate-900 font-sans selection:bg-teal-100">
-      <header className="border-b border-slate-200 bg-white/90 backdrop-blur sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-5 sm:px-6 h-16 flex items-center justify-between">
+    <div className="min-h-screen bg-[#f8faf9] text-slate-900 font-sans selection:bg-teal-100">
+      <header className="border-b border-slate-200 bg-white sticky top-0 z-50">
+        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between gap-5">
           <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="flex items-center gap-3">
-            <div className="w-9 h-9 bg-teal-600 rounded-lg flex items-center justify-center text-white shadow-sm">
-              <Activity size={24} />
+            <div className="w-10 h-10 bg-teal-700 rounded-lg flex items-center justify-center text-white shadow-sm">
+              <Activity size={22} />
             </div>
-            <h1 className="font-bold text-lg tracking-tight text-slate-900">MedInsight AI</h1>
+            <h1 className="font-extrabold text-xl tracking-tight text-slate-950">MedInsight AI</h1>
           </motion.div>
 
-          <AnimatePresence>
+          <nav className="hidden md:flex items-center gap-8 text-sm font-bold text-slate-800">
+            <button type="button" onClick={() => navigate("/")} className="hover:text-teal-700 transition-colors">Dashboard</button>
+            <button type="button" onClick={() => loadReports()} className="hover:text-teal-700 transition-colors">Reports</button>
+            <button type="button" className="hover:text-teal-700 transition-colors">Resources</button>
+          </nav>
+
+          <AnimatePresence mode="popLayout">
             {isUploadRoute && (
               <motion.button
                 initial={{ opacity: 0, scale: 0.9 }}
@@ -249,7 +255,7 @@ export default function App() {
                 exit={{ opacity: 0, scale: 0.9 }}
                 onClick={() => loadReports()}
                 disabled={historyLoading}
-                className="px-4 py-2 text-sm font-semibold text-teal-700 hover:bg-teal-50 rounded-lg flex items-center gap-2 transition-all border border-teal-100 disabled:opacity-50"
+                className="h-10 px-4 text-sm font-extrabold text-teal-700 bg-white hover:bg-teal-50 rounded-lg flex items-center gap-2 transition-all border border-teal-100 disabled:opacity-50 shadow-sm"
               >
                 {historyLoading ? <Loader2 size={14} className="animate-spin" /> : <FileText size={14} />}
                 Saved Reports
@@ -261,7 +267,7 @@ export default function App() {
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.9 }}
                 onClick={reset}
-                className="px-4 py-2 text-sm font-semibold text-teal-700 hover:bg-teal-50 rounded-lg flex items-center gap-2 transition-all border border-teal-100"
+                className="h-10 px-4 text-sm font-extrabold text-teal-700 bg-white hover:bg-teal-50 rounded-lg flex items-center gap-2 transition-all border border-teal-100 shadow-sm"
               >
                 <RefreshCcw size={14} />
                 New Analysis
@@ -271,7 +277,7 @@ export default function App() {
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-5 sm:px-6 py-10 relative z-10">
+      <main className="max-w-7xl mx-auto px-6 py-6 relative z-10">
         <AnimatePresence mode="wait">
           <Routes location={location} key={location.pathname}>
             <Route
@@ -343,14 +349,13 @@ export default function App() {
         </AnimatePresence>
       </main>
 
-      <footer className="max-w-6xl mx-auto px-6 py-16 border-t border-slate-200/60 text-center relative z-10">
-        <div className="flex items-center justify-center gap-2 mb-6 opacity-50">
-          <Activity size={18} className="text-sky-600" />
-          <span className="font-bold tracking-widest text-[10px] uppercase">MedInsight AI Engine</span>
+      <footer className="max-w-7xl mx-auto px-6 py-6 border-t border-slate-200/70 relative z-10 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs font-semibold text-slate-500">
+        <p>© 2026 MedInsight AI. All rights reserved.</p>
+        <div className="flex items-center gap-8">
+          <button type="button" className="hover:text-teal-700 transition-colors">Privacy Policy</button>
+          <button type="button" className="hover:text-teal-700 transition-colors">Terms of Service</button>
+          <button type="button" className="hover:text-teal-700 transition-colors">Contact</button>
         </div>
-        <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">
-          © 2026 MedInsight AI - Powered by Gemini & LangGraph
-        </p>
       </footer>
     </div>
   );
