@@ -1,6 +1,8 @@
 import express from 'express';
 import cors from 'cors';
+import { chromium } from 'playwright';
 import { initializeDatabase, saveReport, updateReportAnalysis, getAllReports, getReportById, deleteReport, getDatabasePath } from './db.js';
+import { buildReportSummaryPdfHtml, ingestReportSummaryContent } from '../src/lib/pdfExport.ts';
 
 const app = express();
 const PORT = Number(process.env.PORT || 3001);
@@ -88,6 +90,72 @@ app.put('/api/reports/:id/analysis', (req, res) => {
   } catch (error) {
     console.error('Error updating report analysis:', error);
     res.status(500).json({ success: false, error: 'Failed to update report analysis' });
+  }
+});
+
+// Export report summary and insights as a directly downloadable PDF.
+app.post('/api/reports/export-summary-pdf', async (req, res) => {
+  let browser: Awaited<ReturnType<typeof chromium.launch>> | null = null;
+
+  try {
+    const { language, summary, insights, recommendations } = req.body;
+
+    if (typeof language !== 'string' || language.trim() === '') {
+      return res.status(400).json({ success: false, error: 'language is required' });
+    }
+
+    if (typeof summary !== 'string' || summary.trim() === '') {
+      return res.status(400).json({ success: false, error: 'summary is required' });
+    }
+
+    if (insights !== undefined && typeof insights !== 'string') {
+      return res.status(400).json({ success: false, error: 'insights must be a string' });
+    }
+
+    if (recommendations !== undefined && !Array.isArray(recommendations)) {
+      return res.status(400).json({ success: false, error: 'recommendations must be an array' });
+    }
+
+    const content = ingestReportSummaryContent({
+      language,
+      summary,
+      insights,
+      recommendations: Array.isArray(recommendations)
+        ? recommendations.filter((recommendation) => typeof recommendation === 'string')
+        : [],
+    });
+    const html = buildReportSummaryPdfHtml(content);
+
+    browser = await chromium.launch({ headless: true });
+    const page = await browser.newPage();
+
+    await page.setContent(html, { waitUntil: 'networkidle' });
+    await page.emulateMedia({ media: 'print' });
+
+    const pdf = await page.pdf({
+      format: 'A4',
+      printBackground: true,
+      margin: {
+        top: '18mm',
+        right: '18mm',
+        bottom: '18mm',
+        left: '18mm',
+      },
+    });
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', 'attachment; filename="medinsight-report-summary.pdf"');
+    res.send(pdf);
+  } catch (error) {
+    console.error('Error exporting report summary PDF:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to export report summary PDF. Please make sure Playwright Chromium is installed.',
+    });
+  } finally {
+    if (browser) {
+      await browser.close();
+    }
   }
 });
 

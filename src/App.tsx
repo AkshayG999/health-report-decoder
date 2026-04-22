@@ -23,8 +23,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/src/lib/utils";
 import { reportProcessor } from "@/src/lib/reportGraph";
-import { getAllReports, getReportById, saveReport as saveReportToAPI, SavedReport, updateReportAnalysis } from "@/src/lib/api";
-import { exportReportSummaryPdf } from "@/src/lib/pdfExport";
+import { downloadReportSummaryPdf, getAllReports, getReportById, saveReport as saveReportToAPI, SavedReport, updateReportAnalysis } from "@/src/lib/api";
 
 interface ReportResult {
   simplifiedReport?: string;
@@ -43,6 +42,7 @@ export default function App() {
   const [processingStatus, setProcessingStatus] = useState<string>("");
   const [reports, setReports] = useState<SavedReport[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
+  const [pdfExporting, setPdfExporting] = useState(false);
 
   const languages = [
     { name: "English", native: "English", flag: "🇬🇧" },
@@ -227,18 +227,34 @@ export default function App() {
     }
   };
 
-  const exportReportSummary = () => {
+  const exportReportSummary = async () => {
     if (!result?.simplifiedReport) return;
 
+    setPdfExporting(true);
+    setError(null);
+
     try {
-      exportReportSummaryPdf({
+      const pdfBlob = await downloadReportSummaryPdf({
         language,
         summary: result.simplifiedReport,
         insights: result.insights,
         recommendations: result.recommendations,
       });
+
+      const downloadUrl = URL.createObjectURL(pdfBlob);
+      const link = document.createElement("a");
+      const date = new Date().toISOString().slice(0, 10);
+
+      link.href = downloadUrl;
+      link.download = `medinsight-report-summary-${date}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(downloadUrl);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not export report summary as PDF.");
+    } finally {
+      setPdfExporting(false);
     }
   };
 
@@ -642,11 +658,11 @@ export default function App() {
                         <button
                           type="button"
                           onClick={exportReportSummary}
-                          disabled={!result.simplifiedReport}
+                          disabled={!result.simplifiedReport || pdfExporting}
                           className="min-h-10 px-4 rounded-lg text-sm font-bold bg-teal-700 text-white hover:bg-teal-800 disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
                         >
-                          <Download size={16} />
-                          Export PDF
+                          {pdfExporting ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
+                          {pdfExporting ? "Exporting..." : "Export PDF"}
                         </button>
                         <div className={cn(
                           "inline-flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold border transition-all w-fit",

@@ -305,33 +305,3 @@ export function buildReportSummaryPdfHtml(content: ReportSummaryPdfContent): str
   </body>
 </html>`;
 }
-
-export function exportReportSummaryPdf(input: ReportSummaryPdfInput): void {
-  const content = ingestReportSummaryContent(input);
-
-  if (!content.summary) {
-    throw new Error("Report summary is not ready yet.");
-  }
-
-  const printWindow = window.open("", "_blank", "width=900,height=1200");
-
-  if (!printWindow) {
-    throw new Error("Please allow popups to export the report summary PDF.");
-  }
-
-  printWindow.opener = null;
-  printWindow.document.open();
-  printWindow.document.write(buildReportSummaryPdfHtml(content));
-  printWindow.document.close();
-  printWindow.focus();
-
-  const printPdf = () => {
-    printWindow.print();
-  };
-
-  if (printWindow.document.fonts?.ready) {
-    printWindow.document.fonts.ready.then(printPdf).catch(printPdf);
-  } else {
-    printWindow.setTimeout(printPdf, 300);
-  }
-}

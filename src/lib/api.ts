@@ -29,6 +29,13 @@ export interface ReportAnalysisData {
   errorMessage?: string;
 }
 
+export interface ReportSummaryPdfData {
+  language: string;
+  summary: string;
+  insights?: string;
+  recommendations?: string[];
+}
+
 export interface SavedReport {
   id: string;
   fileName: string;
@@ -75,6 +82,27 @@ export async function updateReportAnalysis(reportId: string, data: ReportAnalysi
   });
 
   return parseAPIResponse(response, 'Failed to update report analysis');
+}
+
+export async function downloadReportSummaryPdf(data: ReportSummaryPdfData): Promise<Blob> {
+  const response = await fetch(`${API_BASE_URL}/reports/export-summary-pdf`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Accept': 'application/pdf',
+    },
+    body: JSON.stringify(data),
+  });
+
+  if (!response.ok) {
+    const payload = await response.json().catch(() => null);
+    const message = payload && typeof payload.error === 'string'
+      ? payload.error
+      : 'Failed to export report summary PDF';
+    throw new Error(message);
+  }
+
+  return response.blob();
 }
 
 function parseJsonField<T>(value: string | T | undefined, fallback: T): T | undefined {
