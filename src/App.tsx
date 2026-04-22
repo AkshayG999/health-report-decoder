@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/src/lib/utils";
 import { reportProcessor } from "@/src/lib/reportGraph";
+import { getAllReports, getReportById, saveReport as saveReportToAPI, SavedReport, updateReportAnalysis } from "@/src/lib/api";
 
 interface ReportResult {
   simplifiedReport?: string;
@@ -33,11 +34,13 @@ interface ReportResult {
 export default function App() {
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
-  const [step, setStep] = useState<"upload" | "processing" | "result">("upload");
+  const [step, setStep] = useState<"upload" | "processing" | "result" | "history">("upload");
   const [result, setResult] = useState<ReportResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [language, setLanguage] = useState<string>("English");
   const [processingStatus, setProcessingStatus] = useState<string>("");
+  const [reports, setReports] = useState<SavedReport[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
 
   const languages = [
     { name: "English", native: "English", flag: "🇬🇧" },
@@ -81,9 +84,32 @@ export default function App() {
     setStep("processing");
     setError(null);
 
+    let reportId: string | null = null;
+
     try {
+      // STEP 1: Save report to database FIRST (before AI processing)
+      try {
+        const saveResponse = await saveReportToAPI({
+          fileName: file.name,
+          fileSize: file.size,
+          mimeType: file.type,
+          language: language,
+        });
+        reportId = saveResponse.reportId;
+        console.log('✅ Report saved to database with ID:', reportId);
+      } catch (saveError) {
+        console.error('❌ Failed to save report to database:', saveError);
+        throw new Error('Could not connect to the report database API. Please start the backend server and try again.');
+      }
+
+      // STEP 2: Process report with AI
       const base64Data = await fileToBase64(file);
       
+      // Update status to processing
+      if (reportId) {
+        await updateReportAnalysis(reportId, { status: 'processing' });
+      }
+
       const stream = await reportProcessor.stream({
         fileData: base64Data,
         mimeType: file.type,
@@ -91,12 +117,14 @@ export default function App() {
       }, { streamMode: "updates" });
 
       let currentResult: ReportResult = {};
+      let rawExtraction = "";
 
       for await (const chunk of stream) {
         const nodeName = Object.keys(chunk)[0];
         const data = chunk[nodeName];
 
         if (nodeName === "extract") {
+          rawExtraction = data.rawExtraction;
           setProcessingStatus("Simplifying medical terms...");
         } else if (nodeName === "simplify") {
           currentResult = { ...currentResult, simplifiedReport: data.simplifiedReport };
@@ -114,9 +142,39 @@ export default function App() {
           setProcessingStatus("");
         }
       }
+
+      // STEP 3: Update database with AI analysis results
+      if (reportId) {
+        try {
+          await updateReportAnalysis(reportId, {
+            status: 'completed',
+            rawExtraction: rawExtraction,
+            simplifiedReport: currentResult.simplifiedReport,
+            recommendations: currentResult.recommendations,
+            insights: currentResult.insights,
+            resources: currentResult.resources,
+          });
+          console.log('✅ Report analysis saved to database');
+        } catch (updateError) {
+          console.error('❌ Failed to update report analysis:', updateError);
+        }
+      }
     } catch (err) {
       console.error("Processing error:", err);
-      setError("Failed to process the report. Please ensure the file is clear and try again.");
+      
+      // Update status to failed if we have a report ID
+      if (reportId) {
+        try {
+          await updateReportAnalysis(reportId, {
+            status: 'failed',
+            errorMessage: err instanceof Error ? err.message : 'Unknown error occurred'
+          });
+        } catch (updateError) {
+          console.error('Failed to update error status:', updateError);
+        }
+      }
+      
+      setError(err instanceof Error ? err.message : "Failed to process the report. Please ensure the file is clear and try again.");
       setStep("upload");
     } finally {
       setLoading(false);
@@ -130,38 +188,82 @@ export default function App() {
     setError(null);
   };
 
+  const loadReports = async () => {
+    setHistoryLoading(true);
+    setError(null);
+
+    try {
+      const response = await getAllReports();
+      setReports(response.reports);
+      setStep("history");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not load saved reports. Please start the backend server and try again.");
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
+
+  const openSavedReport = async (reportId: string) => {
+    setHistoryLoading(true);
+    setError(null);
+
+    try {
+      const response = await getReportById(reportId);
+      const report = response.report;
+      setResult({
+        simplifiedReport: report.simplifiedReport,
+        recommendations: report.recommendations,
+        insights: report.insights,
+        resources: report.resources,
+      });
+      setStep("result");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not open this report.");
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 font-sans selection:bg-sky-100">
-      {/* Dynamic Background Elements */}
-      <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
-        <div className="absolute -top-[10%] -left-[10%] w-[40%] h-[40%] bg-sky-100/50 rounded-full blur-[120px] animate-pulse"></div>
-        <div className="absolute top-[60%] -right-[10%] w-[30%] h-[30%] bg-indigo-100/50 rounded-full blur-[100px] animate-pulse" style={{ animationDelay: '1s' }}></div>
-      </div>
+    <div className="min-h-screen bg-[#f6f8f7] text-slate-900 font-sans selection:bg-teal-100">
 
       {/* Header */}
-      <header className="border-b border-slate-200/60 bg-white/70 backdrop-blur-xl sticky top-0 z-50">
-        <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
+      <header className="border-b border-slate-200 bg-white/90 backdrop-blur sticky top-0 z-50">
+        <div className="max-w-7xl mx-auto px-5 sm:px-6 h-16 flex items-center justify-between">
           <motion.div 
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             className="flex items-center gap-3"
           >
-            <div className="w-10 h-10 bg-gradient-to-br from-sky-500 to-indigo-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-sky-200">
+            <div className="w-9 h-9 bg-teal-600 rounded-lg flex items-center justify-center text-white shadow-sm">
               <Activity size={24} />
             </div>
-            <h1 className="font-bold text-xl tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-slate-900 to-slate-600">
+            <h1 className="font-bold text-lg tracking-tight text-slate-900">
               MedInsight AI
             </h1>
           </motion.div>
           
           <AnimatePresence>
-            {step === "result" && (
+            {step === "upload" && (
+              <motion.button 
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.9 }}
+                onClick={loadReports}
+                disabled={historyLoading}
+                className="px-4 py-2 text-sm font-semibold text-teal-700 hover:bg-teal-50 rounded-lg flex items-center gap-2 transition-all border border-teal-100 disabled:opacity-50"
+              >
+                {historyLoading ? <Loader2 size={14} className="animate-spin" /> : <FileText size={14} />}
+                Saved Reports
+              </motion.button>
+            )}
+            {(step === "result" || step === "history") && (
               <motion.button 
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.9 }}
                 onClick={reset}
-                className="px-4 py-2 text-sm font-semibold text-sky-600 hover:bg-sky-50 rounded-full flex items-center gap-2 transition-all border border-sky-100"
+                className="px-4 py-2 text-sm font-semibold text-teal-700 hover:bg-teal-50 rounded-lg flex items-center gap-2 transition-all border border-teal-100"
               >
                 <RefreshCcw size={14} />
                 New Analysis
@@ -171,7 +273,7 @@ export default function App() {
         </div>
       </header>
 
-      <main className="max-w-6xl mx-auto px-6 py-12 relative z-10">
+      <main className="max-w-7xl mx-auto px-5 sm:px-6 py-10 relative z-10">
         <AnimatePresence mode="wait">
           {step === "upload" && (
             <motion.div
@@ -179,124 +281,158 @@ export default function App() {
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -30 }}
-              className="max-w-3xl mx-auto"
+              className="max-w-6xl mx-auto"
             >
-              <div className="text-center mb-12">
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: 0.2 }}
-                  className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-sky-50 text-sky-600 text-xs font-bold uppercase tracking-wider mb-6 border border-sky-100"
-                >
-                  <span className="relative flex h-2 w-2">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-sky-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-sky-500"></span>
-                  </span>
-                  AI-Powered Analysis
-                </motion.div>
-                <h2 className="text-4xl md:text-5xl font-extrabold text-slate-900 mb-6 tracking-tight leading-[1.1]">
-                  Understand your health <br /> 
-                  <span className="text-sky-600">with clarity.</span>
-                </h2>
-                <p className="text-slate-500 text-lg max-w-xl mx-auto leading-relaxed">
-                  Upload your medical reports and let our AI translate complex jargon into actionable insights.
-                </p>
-              </div>
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                <section className="lg:col-span-8 bg-white border border-slate-200 rounded-lg shadow-sm overflow-hidden">
+                  <div className="p-6 sm:p-8 border-b border-slate-200">
+                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-teal-50 text-teal-700 text-xs font-bold uppercase tracking-wider mb-5 border border-teal-100">
+                      <Activity size={14} />
+                      AI report analysis
+                    </div>
+                    <h2 className="text-3xl sm:text-4xl font-extrabold text-slate-900 mb-4 tracking-tight leading-tight">
+                      Upload a medical report
+                    </h2>
+                    <p className="text-slate-600 text-base sm:text-lg max-w-2xl leading-8">
+                      Get a simplified summary, practical recommendations, and trusted resources in the language you choose.
+                    </p>
+                  </div>
 
-              {/* Language Selector */}
-              <div className="mb-10 flex flex-col items-center">
-                <div className="flex p-1.5 bg-slate-200/50 backdrop-blur-sm rounded-2xl border border-slate-200/60">
-                  {languages.map((lang) => (
-                    <button
-                      key={lang.name}
-                      onClick={() => setLanguage(lang.name)}
+                  <div className="p-6 sm:p-8 space-y-6">
+                    <div>
+                      <label className="block text-sm font-bold text-slate-700 mb-3">Output language</label>
+                      <div className="grid grid-cols-3 gap-2 p-1 bg-slate-100 rounded-lg border border-slate-200">
+                        {languages.map((lang) => (
+                          <button
+                            key={lang.name}
+                            onClick={() => setLanguage(lang.name)}
+                            className={cn(
+                              "min-h-11 px-3 rounded-md text-sm font-bold transition-all flex items-center justify-center gap-2",
+                              language === lang.name 
+                                ? "bg-white text-teal-700 shadow-sm ring-1 ring-slate-200" 
+                                : "text-slate-600 hover:text-slate-900 hover:bg-white/70"
+                            )}
+                          >
+                            <span>{lang.flag}</span>
+                            <span className="truncate">{lang.native}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div 
+                      {...getRootProps()} 
                       className={cn(
-                        "px-6 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center gap-2",
-                        language === lang.name 
-                          ? "bg-white text-sky-600 shadow-md ring-1 ring-slate-200/50" 
-                          : "text-slate-500 hover:text-slate-700 hover:bg-white/50"
+                        "group border-2 border-dashed rounded-lg p-6 transition-all duration-200 cursor-pointer flex flex-col sm:flex-row items-center sm:items-start justify-between gap-6 min-h-44",
+                        isDragActive ? "border-teal-600 bg-teal-50" : "border-slate-300 bg-[#f8fbfa] hover:border-teal-500 hover:bg-white",
+                        file ? "border-emerald-500 bg-emerald-50/40" : ""
                       )}
                     >
-                      <span>{lang.flag}</span>
-                      {lang.native}
-                    </button>
-                  ))}
-                </div>
-              </div>
+                      <input {...getInputProps()} />
 
-              <div 
-                {...getRootProps()} 
-                className={cn(
-                  "relative group border-2 border-dashed rounded-[2.5rem] p-16 transition-all duration-300 cursor-pointer flex flex-col items-center justify-center gap-6 overflow-hidden hover:scale-[1.01] active:scale-[0.99]",
-                  isDragActive ? "border-sky-500 bg-sky-50/50" : "border-slate-200 bg-white hover:border-sky-400 hover:shadow-2xl hover:shadow-sky-100",
-                  file ? "border-emerald-500 bg-emerald-50/30" : ""
-                )}
-              >
-                <input {...getInputProps()} />
-                
-                {/* Decorative circles */}
-                <div className="absolute -top-10 -right-10 w-40 h-40 bg-sky-50 rounded-full blur-3xl opacity-50 group-hover:opacity-100 transition-opacity"></div>
-                <div className="absolute -bottom-10 -left-10 w-40 h-40 bg-indigo-50 rounded-full blur-3xl opacity-50 group-hover:opacity-100 transition-opacity"></div>
+                      <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5 min-w-0">
+                        <div className={cn(
+                          "w-16 h-16 rounded-lg flex items-center justify-center transition-all duration-200 shrink-0",
+                          file ? "bg-emerald-600 text-white" : "bg-teal-600 text-white group-hover:bg-teal-700"
+                        )}>
+                          {file ? <CheckCircle2 size={32} /> : <Upload size={32} />}
+                        </div>
+                        
+                        {file ? (
+                          <div className="text-center sm:text-left min-w-0">
+                            <p className="font-bold text-slate-900 text-xl mb-2 break-words">{file.name}</p>
+                            <p className="text-sm font-semibold text-emerald-700 mb-4">
+                              Ready to analyze • {(file.size / 1024 / 1024).toFixed(2)} MB
+                            </p>
+                            <p className="text-sm text-slate-600 leading-6">
+                              Click here to choose a different file before starting analysis.
+                            </p>
+                          </div>
+                        ) : (
+                          <div className="text-center sm:text-left">
+                            <p className="font-bold text-slate-900 text-xl mb-2">
+                              {isDragActive ? "Drop the report here" : "Drag and drop your report"}
+                            </p>
+                            <p className="text-slate-600 font-medium leading-7">
+                              Or click this area to browse files from your device.
+                            </p>
+                            <div className="mt-5 flex flex-wrap items-center justify-center sm:justify-start gap-2">
+                              <span className="px-3 py-1 rounded-md bg-white border border-slate-200 text-slate-600 text-xs font-bold uppercase tracking-wider">PDF</span>
+                              <span className="px-3 py-1 rounded-md bg-white border border-slate-200 text-slate-600 text-xs font-bold uppercase tracking-wider">JPG</span>
+                              <span className="px-3 py-1 rounded-md bg-white border border-slate-200 text-slate-600 text-xs font-bold uppercase tracking-wider">PNG</span>
+                            </div>
+                          </div>
+                        )}
+                      </div>
 
-                <div className={cn(
-                  "w-20 h-20 rounded-3xl flex items-center justify-center transition-all duration-500 shadow-xl relative z-10",
-                  file ? "bg-emerald-500 text-white rotate-12" : "bg-sky-600 text-white group-hover:scale-110 group-hover:rotate-3"
-                )}>
-                  {file ? <CheckCircle2 size={40} /> : <Upload size={40} />}
-                </div>
-                
-                {file ? (
-                  <div className="text-center relative z-10">
-                    <p className="font-bold text-slate-800 text-xl mb-1">{file.name}</p>
-                    <p className="text-sm font-medium text-slate-400">Ready to analyze • {(file.size / 1024 / 1024).toFixed(2)} MB</p>
-                  </div>
-                ) : (
-                  <div className="text-center relative z-10">
-                    <p className="font-bold text-slate-800 text-2xl mb-2">
-                      {isDragActive ? "Drop it here" : "Upload your report"}
-                    </p>
-                    <p className="text-slate-400 font-medium">Drag & drop or click to browse files</p>
-                    <div className="mt-6 flex items-center justify-center gap-3">
-                      <span className="px-3 py-1 rounded-lg bg-slate-100 text-slate-500 text-[10px] font-bold uppercase tracking-widest">PDF</span>
-                      <span className="px-3 py-1 rounded-lg bg-slate-100 text-slate-500 text-[10px] font-bold uppercase tracking-widest">JPG</span>
-                      <span className="px-3 py-1 rounded-lg bg-slate-100 text-slate-500 text-[10px] font-bold uppercase tracking-widest">PNG</span>
+                      <div className="hidden sm:flex w-11 h-11 rounded-lg border border-slate-200 bg-white items-center justify-center text-slate-400 group-hover:text-teal-700 transition-colors shrink-0">
+                        <ChevronRight size={20} />
+                      </div>
                     </div>
+
+                    {error && (
+                      <motion.div 
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="p-4 bg-rose-50 border border-rose-100 rounded-lg flex items-start gap-3 text-rose-700 shadow-sm"
+                      >
+                        <AlertCircle className="shrink-0 mt-0.5" size={20} />
+                        <p className="text-sm font-medium leading-relaxed">{error}</p>
+                      </motion.div>
+                    )}
+
+                    <motion.button
+                      disabled={!file || loading}
+                      onClick={processReport}
+                      whileHover={{ y: -2 }}
+                      whileTap={{ scale: 0.98 }}
+                      className={cn(
+                        "w-full py-4 rounded-lg font-bold text-lg flex items-center justify-center gap-3 transition-all shadow-sm",
+                        !file || loading 
+                          ? "bg-slate-200 text-slate-400 cursor-not-allowed shadow-none" 
+                          : "bg-teal-700 text-white hover:bg-teal-800"
+                      )}
+                    >
+                      {loading ? <Loader2 className="animate-spin" /> : (
+                        <>
+                          Start Analysis
+                          <ChevronRight size={20} />
+                        </>
+                      )}
+                    </motion.button>
                   </div>
-                )}
+                </section>
+
+                <aside className="lg:col-span-4 space-y-4">
+                  <div className="bg-[#163f3a] text-white border border-[#163f3a] rounded-lg p-6 shadow-sm">
+                    <h3 className="text-lg font-extrabold mb-3">What you get</h3>
+                    <ul className="space-y-3 text-sm text-teal-50/90 leading-6">
+                      <li className="flex gap-3"><CheckCircle2 size={18} className="text-teal-100 shrink-0 mt-0.5" /> Patient-friendly explanation</li>
+                      <li className="flex gap-3"><CheckCircle2 size={18} className="text-teal-100 shrink-0 mt-0.5" /> Personalized insights</li>
+                      <li className="flex gap-3"><CheckCircle2 size={18} className="text-teal-100 shrink-0 mt-0.5" /> Saved report history</li>
+                    </ul>
+                  </div>
+
+                  <div className="bg-white border border-slate-200 rounded-lg p-6 shadow-sm">
+                    <h3 className="text-lg font-extrabold text-slate-900 mb-3">Before you start</h3>
+                    <p className="text-sm text-slate-600 leading-7">
+                      Use a clear report image or PDF. Blurry scans can reduce extraction quality.
+                    </p>
+                  </div>
+
+                  <div className="bg-amber-50 border border-amber-100 rounded-lg p-6 shadow-sm">
+                    <div className="flex items-center gap-3 mb-3 text-amber-700">
+                      <AlertCircle size={20} />
+                      <h3 className="text-sm font-extrabold uppercase tracking-wider">Medical note</h3>
+                    </div>
+                    <p className="text-sm text-amber-900 leading-7">
+                      This tool helps you understand reports. It does not replace advice from a qualified healthcare provider.
+                    </p>
+                  </div>
+                </aside>
               </div>
 
-              {error && (
-                <motion.div 
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="mt-8 p-5 bg-rose-50 border border-rose-100 rounded-2xl flex items-start gap-4 text-rose-700 shadow-sm"
-                >
-                  <AlertCircle className="shrink-0 mt-0.5" size={20} />
-                  <p className="text-sm font-medium leading-relaxed">{error}</p>
-                </motion.div>
-              )}
-
-              <motion.button
-                disabled={!file || loading}
-                onClick={processReport}
-                whileHover={{ y: -2 }}
-                whileTap={{ scale: 0.98 }}
-                className={cn(
-                  "w-full mt-10 py-5 rounded-[1.5rem] font-bold text-xl flex items-center justify-center gap-3 transition-all shadow-2xl",
-                  !file || loading 
-                    ? "bg-slate-200 text-slate-400 cursor-not-allowed shadow-none" 
-                    : "bg-slate-900 text-white hover:bg-slate-800 shadow-slate-200"
-                )}
-              >
-                {loading ? <Loader2 className="animate-spin" /> : (
-                  <>
-                    Start Analysis
-                    <ChevronRight size={20} />
-                  </>
-                )}
-              </motion.button>
-              
-              <div className="mt-20 grid grid-cols-1 md:grid-cols-3 gap-8">
+              <div className="mt-10 grid grid-cols-1 md:grid-cols-3 gap-4">
                 {[
                   { icon: <Stethoscope size={24} />, title: "Simplified Jargon", desc: "We break down complex medical terms into plain language you can actually understand." },
                   { icon: <Lightbulb size={24} />, title: "Actionable Insights", desc: "Get personalized recommendations and specific questions to ask your healthcare provider." },
@@ -307,13 +443,13 @@ export default function App() {
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.4 + (i * 0.1) }}
-                    className="p-6 rounded-3xl bg-white border border-slate-100 shadow-sm hover:shadow-md transition-shadow"
+                    className="p-5 rounded-lg bg-white border border-slate-200 shadow-sm hover:shadow-md transition-shadow"
                   >
-                    <div className="w-12 h-12 rounded-2xl bg-slate-50 text-sky-600 flex items-center justify-center mb-5">
+                    <div className="w-11 h-11 rounded-lg bg-teal-50 text-teal-700 flex items-center justify-center mb-4">
                       {item.icon}
                     </div>
                     <h3 className="font-bold text-slate-800 text-lg mb-2 tracking-tight">{item.title}</h3>
-                    <p className="text-sm text-slate-500 leading-relaxed font-medium">{item.desc}</p>
+                    <p className="text-sm text-slate-600 leading-7 font-medium">{item.desc}</p>
                   </motion.div>
                 ))}
               </div>
@@ -364,35 +500,118 @@ export default function App() {
             </motion.div>
           )}
 
+          {step === "history" && (
+            <motion.div
+              key="history"
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -30 }}
+              className="max-w-4xl mx-auto"
+            >
+              <div className="mb-10">
+                <h2 className="text-3xl font-extrabold text-slate-900 mb-3 tracking-tight">Saved Reports</h2>
+                <p className="text-slate-500 font-medium">
+                  Open a completed report to view the saved summary, recommendations, and resources.
+                </p>
+              </div>
+
+              {error && (
+                <motion.div 
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="mb-8 p-5 bg-rose-50 border border-rose-100 rounded-2xl flex items-start gap-4 text-rose-700 shadow-sm"
+                >
+                  <AlertCircle className="shrink-0 mt-0.5" size={20} />
+                  <p className="text-sm font-medium leading-relaxed">{error}</p>
+                </motion.div>
+              )}
+
+              {historyLoading ? (
+                <div className="bg-white border border-slate-100 rounded-[2rem] p-10 flex items-center justify-center gap-3 text-slate-500 font-bold">
+                  <Loader2 className="animate-spin text-sky-600" />
+                  Loading saved reports...
+                </div>
+              ) : reports.length > 0 ? (
+                <div className="space-y-4">
+                  {reports.map((report) => (
+                    <button
+                      key={report.id}
+                      onClick={() => openSavedReport(report.id)}
+                      className="w-full text-left bg-white border border-slate-100 rounded-2xl p-5 shadow-sm hover:shadow-md hover:border-sky-200 transition-all"
+                    >
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-3 mb-2">
+                            <div className="w-10 h-10 rounded-xl bg-sky-50 text-sky-600 flex items-center justify-center shrink-0">
+                              <FileText size={20} />
+                            </div>
+                            <div className="min-w-0">
+                              <h3 className="font-bold text-slate-900 truncate">{report.fileName}</h3>
+                              <p className="text-xs font-bold uppercase tracking-widest text-slate-400">
+                                {report.language} • {(report.fileSize / 1024 / 1024).toFixed(2)} MB
+                              </p>
+                            </div>
+                          </div>
+                          {report.errorMessage && (
+                            <p className="text-sm text-rose-600 font-medium">{report.errorMessage}</p>
+                          )}
+                        </div>
+
+                        <div className="flex items-center gap-3 shrink-0">
+                          <span className={cn(
+                            "px-3 py-1 rounded-full text-xs font-bold border capitalize",
+                            report.status === "completed" && "bg-emerald-50 text-emerald-600 border-emerald-100",
+                            report.status === "failed" && "bg-rose-50 text-rose-600 border-rose-100",
+                            report.status === "processing" && "bg-sky-50 text-sky-600 border-sky-100",
+                            report.status === "pending" && "bg-slate-50 text-slate-500 border-slate-100"
+                          )}>
+                            {report.status}
+                          </span>
+                          <ChevronRight size={18} className="text-slate-400" />
+                        </div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <div className="bg-white border border-slate-100 rounded-[2rem] p-10 text-center">
+                  <FileText size={36} className="mx-auto text-slate-300 mb-4" />
+                  <h3 className="font-bold text-slate-900 mb-2">No saved reports yet</h3>
+                  <p className="text-sm text-slate-500 font-medium">Run an analysis first, then it will appear here.</p>
+                </div>
+              )}
+            </motion.div>
+          )}
+
           {step === "result" && result && (
             <motion.div
               key="result"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              className="space-y-8"
+              className="space-y-6"
             >
               {/* Result Bento Grid */}
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
                 
                 {/* Main Summary - Large Span */}
                 <motion.section 
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="lg:col-span-8 bg-white rounded-[2.5rem] p-10 shadow-xl shadow-slate-200/50 border border-slate-100"
+                  className="lg:col-span-8 bg-white rounded-lg p-6 sm:p-8 shadow-sm border border-slate-200"
                 >
-                  <div className="flex items-center justify-between mb-10">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
                       <div className="flex items-center gap-4">
-                        <div className="p-3 bg-sky-50 text-sky-600 rounded-2xl shadow-inner">
+                        <div className="p-3 bg-teal-50 text-teal-700 rounded-lg">
                           <FileText size={28} />
                         </div>
                         <div>
                           <h2 className="text-2xl font-extrabold text-slate-900 tracking-tight">Report Summary</h2>
-                          <p className="text-sm font-bold text-slate-400 uppercase tracking-widest mt-1">Simplified View</p>
+                          <p className="text-sm font-bold text-slate-500 uppercase tracking-widest mt-1">Simplified View</p>
                         </div>
                       </div>
                       <div className={cn(
-                        "hidden sm:flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold border transition-all",
-                        result.recommendations ? "bg-emerald-50 text-emerald-600 border-emerald-100" : "bg-sky-50 text-sky-600 border-sky-100 animate-pulse"
+                        "inline-flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold border transition-all w-fit",
+                        result.recommendations ? "bg-emerald-50 text-emerald-700 border-emerald-100" : "bg-teal-50 text-teal-700 border-teal-100 animate-pulse"
                       )}>
                         {result.recommendations ? (
                           <><CheckCircle2 size={14} /> Analysis Complete</>
@@ -402,7 +621,7 @@ export default function App() {
                       </div>
                     </div>
                     
-                    <div className="markdown-content">
+                    <div className="markdown-content text-base sm:text-[17px] leading-8">
                       {result.simplifiedReport ? (
                         <Markdown>{result.simplifiedReport}</Markdown>
                       ) : (
@@ -416,21 +635,21 @@ export default function App() {
                   </motion.section>
 
                 {/* Sidebar - Prep & Disclaimer */}
-                <div className="lg:col-span-4 space-y-8">
+                <div className="lg:col-span-4 space-y-6">
                   <motion.section 
                     initial={{ opacity: 0, x: 20 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: 0.2 }}
-                    className="bg-slate-900 rounded-[2.5rem] p-8 text-white shadow-2xl shadow-slate-300"
+                    className="bg-[#163f3a] rounded-lg p-6 text-white shadow-sm"
                   >
-                    <div className="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center mb-6">
-                      <Stethoscope size={24} className="text-sky-400" />
+                    <div className="w-12 h-12 bg-white/10 rounded-lg flex items-center justify-center mb-6">
+                      <Stethoscope size={24} className="text-teal-100" />
                     </div>
                     <h3 className="text-xl font-extrabold mb-4 tracking-tight">Doctor's Visit Prep</h3>
-                    <p className="text-slate-400 text-sm font-medium mb-8 leading-relaxed">
+                    <p className="text-teal-50/80 text-sm font-medium mb-6 leading-relaxed">
                       Key questions to discuss with your healthcare provider based on this report:
                     </p>
-                    <ul className="space-y-4">
+                    <ul className="space-y-3">
                       {[
                         "What do these specific values mean for my long-term health?",
                         "Are there lifestyle changes that can improve these results?",
@@ -439,10 +658,10 @@ export default function App() {
                         <motion.li 
                           key={i} 
                           whileHover={{ x: 5 }}
-                          className="flex gap-4 text-sm bg-white/5 p-4 rounded-2xl border border-white/10 hover:bg-white/10 transition-colors cursor-default"
+                          className="flex gap-3 text-sm bg-white/8 p-4 rounded-lg border border-white/10 hover:bg-white/12 transition-colors cursor-default"
                         >
-                          <ChevronRight size={18} className="shrink-0 text-sky-400" />
-                          <span className="font-medium leading-snug">{q}</span>
+                          <ChevronRight size={18} className="shrink-0 text-teal-100 mt-0.5" />
+                          <span className="font-medium leading-6">{q}</span>
                         </motion.li>
                       ))}
                     </ul>
@@ -452,13 +671,13 @@ export default function App() {
                     initial={{ opacity: 0, x: 20 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: 0.3 }}
-                    className="bg-white rounded-[2.5rem] p-8 border border-slate-100 shadow-sm"
+                    className="bg-white rounded-lg p-6 border border-slate-200 shadow-sm"
                   >
-                    <div className="flex items-center gap-3 mb-4 text-slate-400">
+                    <div className="flex items-center gap-3 mb-4 text-slate-500">
                       <AlertCircle size={20} />
                       <h4 className="font-bold text-sm uppercase tracking-widest">Medical Disclaimer</h4>
                     </div>
-                    <p className="text-xs text-slate-500 leading-relaxed font-medium">
+                    <p className="text-sm text-slate-600 leading-6 font-medium">
                       This analysis is generated by AI for informational purposes only. It is not a medical diagnosis or professional medical advice. Always consult with a qualified healthcare provider.
                     </p>
                   </motion.section>
@@ -469,37 +688,39 @@ export default function App() {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.4 }}
-                  className="lg:col-span-12 bg-gradient-to-br from-white to-sky-50/30 rounded-[2.5rem] p-10 shadow-xl shadow-slate-200/50 border border-slate-100"
+                  className="lg:col-span-12 bg-white rounded-lg p-6 sm:p-8 shadow-sm border border-slate-200"
                 >
-                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-8">
+                  <div className="flex flex-col md:flex-row md:items-start justify-between gap-8">
                     <div className="flex-1">
                       <div className="flex items-center gap-4 mb-6">
-                        <div className="p-3 bg-amber-50 text-amber-600 rounded-2xl shadow-inner">
+                        <div className="p-3 bg-amber-50 text-amber-700 rounded-lg">
                           <Lightbulb size={28} />
                         </div>
                         <h2 className="text-2xl font-extrabold text-slate-900 tracking-tight">Personalized Insights</h2>
                       </div>
                       
                       {result.insights ? (
-                        <blockquote className="text-xl font-bold text-slate-800 leading-relaxed mb-8 italic border-l-4 border-sky-500 pl-6">
-                          "{result.insights}"
+                        <blockquote className="insight-markdown text-lg sm:text-xl font-bold text-slate-800 leading-8 mb-8 border-l-4 border-teal-600 pl-5">
+                          <Markdown>{result.insights}</Markdown>
                         </blockquote>
                       ) : (
                         <div className="h-12 bg-slate-100 rounded w-full animate-pulse mb-8"></div>
                       )}
 
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 gap-4">
                         {result.recommendations ? (
                           result.recommendations.map((rec, i) => (
                             <motion.div 
                               key={i} 
                               whileHover={{ y: -2 }}
-                              className="flex gap-4 p-5 rounded-2xl bg-white border border-slate-100 shadow-sm hover:shadow-md transition-all"
+                              className="flex gap-4 p-5 sm:p-6 rounded-lg bg-[#f8fbfa] border border-slate-200 shadow-sm hover:shadow-md transition-all min-w-0"
                             >
-                              <div className="shrink-0 w-8 h-8 rounded-full bg-sky-50 flex items-center justify-center text-xs font-black text-sky-600">
+                              <div className="shrink-0 w-8 h-8 rounded-lg bg-teal-50 flex items-center justify-center text-xs font-black text-teal-700">
                                 {i + 1}
                               </div>
-                              <p className="text-slate-700 font-medium leading-relaxed">{rec}</p>
+                              <div className="recommendation-markdown min-w-0 flex-1 text-slate-700 font-medium leading-7 break-words">
+                                <Markdown>{rec}</Markdown>
+                              </div>
                             </motion.div>
                           ))
                         ) : (
@@ -517,10 +738,10 @@ export default function App() {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.5 }}
-                  className="lg:col-span-12 bg-white rounded-[2.5rem] p-10 shadow-xl shadow-slate-200/50 border border-slate-100"
+                  className="lg:col-span-12 bg-white rounded-lg p-6 sm:p-8 shadow-sm border border-slate-200"
                 >
                   <div className="flex items-center gap-4 mb-10">
-                    <div className="p-3 bg-emerald-50 text-emerald-600 rounded-2xl shadow-inner">
+                    <div className="p-3 bg-emerald-50 text-emerald-700 rounded-lg">
                       <ExternalLink size={28} />
                     </div>
                     <h2 className="text-2xl font-extrabold text-slate-900 tracking-tight">Trusted Resources</h2>
@@ -535,10 +756,10 @@ export default function App() {
                           target="_blank" 
                           rel="noopener noreferrer"
                           whileHover={{ y: -5, scale: 1.02 }}
-                          className="flex items-center justify-between p-6 rounded-3xl border border-slate-100 bg-slate-50/50 hover:bg-white hover:border-sky-200 hover:shadow-2xl hover:shadow-sky-100 transition-all group"
+                          className="flex items-center justify-between gap-4 p-5 rounded-lg border border-slate-200 bg-[#f8fbfa] hover:bg-white hover:border-teal-200 hover:shadow-md transition-all group"
                         >
-                          <span className="font-bold text-slate-700 group-hover:text-sky-600 transition-colors">{resource.title}</span>
-                          <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center text-slate-400 group-hover:text-sky-600 group-hover:bg-sky-50 transition-all shadow-sm">
+                          <span className="font-bold text-slate-700 group-hover:text-teal-700 transition-colors leading-6">{resource.title}</span>
+                          <div className="w-10 h-10 rounded-lg bg-white flex items-center justify-center text-slate-400 group-hover:text-teal-700 group-hover:bg-teal-50 transition-all shadow-sm shrink-0">
                             <ExternalLink size={18} />
                           </div>
                         </motion.a>

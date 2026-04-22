@@ -1,5 +1,5 @@
 import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
-import { StateGraph, END } from "@langchain/langgraph";
+import { StateGraph, START, END } from "@langchain/langgraph";
 import { Annotation } from "@langchain/langgraph";
 
 // Define the state for our graph
@@ -104,11 +104,21 @@ const recommendNode = async (state: ReportStateType) => {
 
   const response = await model.invoke(prompt);
   
-  // Basic parsing of recommendations
-  const lines = (response.content as string)
-    .split("\n")
-    .filter(line => line.trim().startsWith("-") || line.trim().match(/^\d\./) || line.trim().startsWith("•"))
-    .map(line => line.replace(/^[- \d\.•]+/, "").trim());
+  const parseRecommendations = (content: string) => {
+    const normalized = content
+      .replace(/\r\n/g, "\n")
+      .replace(/(?<!^)\s+(\d+\.\s+)/g, "\n$1")
+      .replace(/(?<!^)\s+([*•-]\s+)/g, "\n$1");
+
+    return normalized
+      .split("\n")
+      .map(line => line.trim())
+      .filter(line => line.startsWith("-") || line.match(/^\d+\./) || line.startsWith("•") || line.startsWith("*"))
+      .map(line => line.replace(/^[-*•]\s*/, "").replace(/^\d+\.\s*/, "").trim())
+      .filter(Boolean);
+  };
+
+  const lines = parseRecommendations(response.content as string);
 
   const insightsPrompt = `Based on the findings, provide a one-sentence encouraging insight in ${state.language || 'English'}.
   
@@ -146,9 +156,10 @@ const workflow = new StateGraph(ReportState)
   .addNode("extract", extractNode)
   .addNode("simplify", simplifyNode)
   .addNode("recommend", recommendNode)
-  .addEdge("__start__", "extract")
+  .addEdge(START, "extract")
   .addEdge("extract", "simplify")
-  .addEdge("simplify", "recommend")
-  .addEdge("recommend", END);
+  .addEdge("extract", "recommend")
+  .addEdge("recommend", END)
+  .addEdge("simplify", END);
 
 export const reportProcessor = workflow.compile();
