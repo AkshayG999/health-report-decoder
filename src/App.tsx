@@ -6,7 +6,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "motion/react";
-import { Activity, FileText, Loader2, RefreshCcw } from "lucide-react";
+import { Activity, ChevronDown, FileText, Loader2, RefreshCcw } from "lucide-react";
 import { reportProcessor } from "@/src/lib/reportGraph";
 import {
   downloadReportSummaryPdf,
@@ -27,6 +27,16 @@ const languages: LanguageOption[] = [
   { name: "English", native: "English", flag: "🇬🇧" },
   { name: "Hindi", native: "हिन्दी", flag: "🇮🇳" },
   { name: "Marathi", native: "मराठी", flag: "🇮🇳" },
+  { name: "Gujarati", native: "ગુજરાતી", flag: "🇮🇳" },
+  { name: "Bengali", native: "বাংলা", flag: "🇮🇳" },
+  { name: "Tamil", native: "தமிழ்", flag: "🇮🇳" },
+  { name: "Telugu", native: "తెలుగు", flag: "🇮🇳" },
+  { name: "Kannada", native: "ಕನ್ನಡ", flag: "🇮🇳" },
+  { name: "Malayalam", native: "മലയാളം", flag: "🇮🇳" },
+  { name: "Punjabi", native: "ਪੰਜਾਬੀ", flag: "🇮🇳" },
+  { name: "Urdu", native: "اردو", flag: "🇮🇳" },
+  { name: "Odia", native: "ଓଡ଼ିଆ", flag: "🇮🇳" },
+  { name: "Assamese", native: "অসমীয়া", flag: "🇮🇳" },
 ];
 
 export default function App() {
@@ -36,7 +46,7 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<ReportResult | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [language, setLanguage] = useState("English");
+  const [language, setLanguage] = useState("Hindi");
   const [processingStatus, setProcessingStatus] = useState("");
   const [reports, setReports] = useState<SavedReport[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
@@ -255,33 +265,41 @@ export default function App() {
             <button type="button" className={navTabClass(false)}>Resources</button>
           </nav>
 
-          <AnimatePresence mode="popLayout">
-            {isUploadRoute && (
-              <motion.button
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.9 }}
-                onClick={() => loadReports()}
-                disabled={historyLoading}
-                className="h-10 px-4 text-sm font-extrabold text-primary-600 bg-white hover:bg-primary-50 rounded-lg flex items-center gap-2 transition-all border border-primary-100 disabled:opacity-50 shadow-sm"
-              >
-                {historyLoading ? <Loader2 size={14} className="animate-spin" /> : <FileText size={14} />}
-                Saved Reports
-              </motion.button>
-            )}
-            {showNewAnalysis && (
-              <motion.button
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.9 }}
-                onClick={reset}
-                className="h-10 px-4 text-sm font-extrabold text-primary-600 bg-white hover:bg-primary-50 rounded-lg flex items-center gap-2 transition-all border border-primary-100 shadow-sm"
-              >
-                <RefreshCcw size={14} />
-                New Analysis
-              </motion.button>
-            )}
-          </AnimatePresence>
+          <div className="flex items-center gap-3">
+            <AnimatePresence mode="popLayout">
+              {isUploadRoute && (
+                <motion.button
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.9 }}
+                  onClick={() => loadReports()}
+                  disabled={historyLoading}
+                  className="h-10 px-4 text-sm font-extrabold text-primary-600 bg-white hover:bg-primary-50 rounded-lg flex items-center gap-2 transition-all border border-primary-100 disabled:opacity-50 shadow-sm"
+                >
+                  {historyLoading ? <Loader2 size={14} className="animate-spin" /> : <FileText size={14} />}
+                  Saved Reports
+                </motion.button>
+              )}
+              {showNewAnalysis && (
+                <motion.button
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.9 }}
+                  onClick={reset}
+                  className="h-10 px-4 text-sm font-extrabold text-primary-600 bg-white hover:bg-primary-50 rounded-lg flex items-center gap-2 transition-all border border-primary-100 shadow-sm"
+                >
+                  <RefreshCcw size={14} />
+                  New Analysis
+                </motion.button>
+              )}
+            </AnimatePresence>
+            <button type="button" className="hidden sm:flex items-center gap-2 text-sm font-bold text-ink">
+              <span className="flex h-10 w-10 items-center justify-center rounded-full bg-primary-400 text-sm font-black text-primary-50 shadow-sm shadow-primary-100">
+                AK
+              </span>
+              <ChevronDown size={16} className="text-cocoa" />
+            </button>
+          </div>
         </div>
       </header>
 

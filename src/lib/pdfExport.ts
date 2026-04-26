@@ -17,6 +17,16 @@ const languageCodes: Record<string, string> = {
   English: "en",
   Hindi: "hi",
   Marathi: "mr",
+  Gujarati: "gu",
+  Bengali: "bn",
+  Tamil: "ta",
+  Telugu: "te",
+  Kannada: "kn",
+  Malayalam: "ml",
+  Punjabi: "pa",
+  Urdu: "ur",
+  Odia: "or",
+  Assamese: "as",
 };
 
 function escapeHtml(value: string): string {

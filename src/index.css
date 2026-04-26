@@ -96,22 +96,22 @@
   }
 
   .markdown-content h1 {
-    @apply text-2xl font-bold mb-4 mt-6 text-ink tracking-tight leading-tight;
+    @apply text-xl font-bold mb-3 mt-5 text-ink tracking-tight leading-tight;
   }
   .markdown-content h2 {
-    @apply text-xl font-bold mb-3 mt-6 text-cocoa border-b border-primary-100 pb-2 tracking-tight leading-tight;
+    @apply text-lg font-bold mb-2.5 mt-5 text-cocoa border-b border-primary-100 pb-2 tracking-tight leading-tight;
   }
   .markdown-content h3 {
-    @apply text-lg font-bold mb-2 mt-5 text-cocoa tracking-tight leading-tight;
+    @apply text-base font-bold mb-2 mt-4 text-cocoa tracking-tight leading-tight;
   }
   .markdown-content p {
-    @apply mb-4 last:mb-0 text-cocoa leading-8;
+    @apply mb-3 last:mb-0 text-cocoa leading-7;
   }
   .markdown-content ul {
-    @apply list-disc pl-5 mb-5 space-y-2 text-cocoa leading-8;
+    @apply list-disc pl-5 mb-4 space-y-1.5 text-cocoa leading-7;
   }
   .markdown-content ol {
-    @apply list-decimal pl-5 mb-5 space-y-2 text-cocoa leading-8;
+    @apply list-decimal pl-5 mb-4 space-y-1.5 text-cocoa leading-7;
   }
   .markdown-content li {
     @apply pl-2;
@@ -124,7 +124,7 @@
   }
 
   .insight-markdown p {
-    @apply m-0 text-cocoa leading-8;
+    @apply m-0 text-cocoa leading-7;
   }
 
   .insight-markdown strong {
@@ -132,15 +132,15 @@
   }
 
   .recommendation-markdown p {
-    @apply mb-3 last:mb-0 text-cocoa leading-7;
+    @apply mb-2 last:mb-0 text-cocoa leading-6;
   }
 
   .recommendation-markdown ul {
-    @apply list-disc pl-5 my-3 space-y-2 text-cocoa leading-7;
+    @apply list-disc pl-5 my-2 space-y-1.5 text-cocoa leading-6;
   }
 
   .recommendation-markdown ol {
-    @apply list-decimal pl-5 my-3 space-y-2 text-cocoa leading-7;
+    @apply list-decimal pl-5 my-2 space-y-1.5 text-cocoa leading-6;
   }
 
   .recommendation-markdown li {

@@ -6,7 +6,7 @@ import { Annotation } from "@langchain/langgraph";
 const ReportState = Annotation.Root({
   fileData: Annotation<string>(), // Base64 encoded file
   mimeType: Annotation<string>(),
-  language: Annotation<string>(), // Preferred language (English, Hindi, Marathi)
+  language: Annotation<string>(), // Preferred patient-facing language.
   rawExtraction: Annotation<string>(),
   simplifiedReport: Annotation<string>(),
   recommendations: Annotation<string[]>(),
