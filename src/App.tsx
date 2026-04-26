@@ -44,6 +44,14 @@ export default function App() {
 
   const isUploadRoute = location.pathname === "/";
   const showNewAnalysis = location.pathname === "/result" || location.pathname.startsWith("/reports");
+  const isReportsRoute = location.pathname.startsWith("/reports");
+  const navTabClass = (active: boolean) =>
+    [
+      "relative px-1 pb-1 transition-colors after:absolute after:left-0 after:right-0 after:bottom-0 after:h-0.5 after:rounded-full after:transition-all",
+      active
+        ? "text-primary-600 after:bg-primary-400 after:opacity-100"
+        : "text-cocoa hover:text-primary-400 after:bg-transparent after:opacity-0",
+    ].join(" ");
 
   const fileToBase64 = (fileToRead: File): Promise<string> => {
     return new Promise((resolve, reject) => {
@@ -231,20 +239,20 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-[#f8faf9] text-slate-900 font-sans selection:bg-teal-100">
-      <header className="border-b border-slate-200 bg-white sticky top-0 z-50">
+    <div className="min-h-screen text-ink font-sans selection:bg-accent-100 selection:text-accent-900">
+      <header className="border-b border-primary-100 bg-white/90 backdrop-blur sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between gap-5">
           <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-teal-700 rounded-lg flex items-center justify-center text-white shadow-sm">
+            <div className="w-10 h-10 bg-primary-400 rounded-lg flex items-center justify-center text-primary-50 shadow-sm shadow-primary-100">
               <Activity size={22} />
             </div>
-            <h1 className="font-extrabold text-xl tracking-tight text-slate-950">MedInsight AI</h1>
+            <h1 className="font-extrabold text-xl tracking-tight text-ink">MedInsight AI</h1>
           </motion.div>
 
-          <nav className="hidden md:flex items-center gap-8 text-sm font-bold text-slate-800">
-            <button type="button" onClick={() => navigate("/")} className="hover:text-teal-700 transition-colors">Dashboard</button>
-            <button type="button" onClick={() => loadReports()} className="hover:text-teal-700 transition-colors">Reports</button>
-            <button type="button" className="hover:text-teal-700 transition-colors">Resources</button>
+          <nav className="hidden md:flex items-center gap-8 text-sm font-bold">
+            <button type="button" onClick={() => navigate("/")} className={navTabClass(!isReportsRoute)}>Dashboard</button>
+            <button type="button" onClick={() => loadReports()} className={navTabClass(isReportsRoute)}>Reports</button>
+            <button type="button" className={navTabClass(false)}>Resources</button>
           </nav>
 
           <AnimatePresence mode="popLayout">
@@ -255,7 +263,7 @@ export default function App() {
                 exit={{ opacity: 0, scale: 0.9 }}
                 onClick={() => loadReports()}
                 disabled={historyLoading}
-                className="h-10 px-4 text-sm font-extrabold text-teal-700 bg-white hover:bg-teal-50 rounded-lg flex items-center gap-2 transition-all border border-teal-100 disabled:opacity-50 shadow-sm"
+                className="h-10 px-4 text-sm font-extrabold text-primary-600 bg-white hover:bg-primary-50 rounded-lg flex items-center gap-2 transition-all border border-primary-100 disabled:opacity-50 shadow-sm"
               >
                 {historyLoading ? <Loader2 size={14} className="animate-spin" /> : <FileText size={14} />}
                 Saved Reports
@@ -267,7 +275,7 @@ export default function App() {
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.9 }}
                 onClick={reset}
-                className="h-10 px-4 text-sm font-extrabold text-teal-700 bg-white hover:bg-teal-50 rounded-lg flex items-center gap-2 transition-all border border-teal-100 shadow-sm"
+                className="h-10 px-4 text-sm font-extrabold text-primary-600 bg-white hover:bg-primary-50 rounded-lg flex items-center gap-2 transition-all border border-primary-100 shadow-sm"
               >
                 <RefreshCcw size={14} />
                 New Analysis
@@ -349,12 +357,12 @@ export default function App() {
         </AnimatePresence>
       </main>
 
-      <footer className="max-w-7xl mx-auto px-6 py-6 border-t border-slate-200/70 relative z-10 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs font-semibold text-slate-500">
+      <footer className="max-w-7xl mx-auto px-6 py-6 border-t border-primary-100/70 relative z-10 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs font-semibold text-clay">
         <p>© 2026 MedInsight AI. All rights reserved.</p>
         <div className="flex items-center gap-8">
-          <button type="button" className="hover:text-teal-700 transition-colors">Privacy Policy</button>
-          <button type="button" className="hover:text-teal-700 transition-colors">Terms of Service</button>
-          <button type="button" className="hover:text-teal-700 transition-colors">Contact</button>
+          <button type="button" className="hover:text-primary-400 transition-colors">Privacy Policy</button>
+          <button type="button" className="hover:text-primary-400 transition-colors">Terms of Service</button>
+          <button type="button" className="hover:text-primary-400 transition-colors">Contact</button>
         </div>
       </footer>
     </div>

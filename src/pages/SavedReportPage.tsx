@@ -42,9 +42,9 @@ export function SavedReportPage({
         key="saved-report-loading"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="max-w-4xl mx-auto bg-white border border-slate-200 rounded-lg p-10 flex items-center justify-center gap-3 text-slate-500 font-bold"
+        className="max-w-4xl mx-auto bg-white border border-primary-100 rounded-lg p-10 flex items-center justify-center gap-3 text-clay font-bold"
       >
-        <Loader2 className="animate-spin text-teal-700" />
+        <Loader2 className="animate-spin text-primary-400" />
         Loading saved report...
       </motion.div>
     );

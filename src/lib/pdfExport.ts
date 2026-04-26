@@ -144,8 +144,8 @@ export function buildReportSummaryPdfHtml(content: ReportSummaryPdfContent): str
 
       body {
         margin: 0;
-        color: #0f172a;
-        background: #ffffff;
+        color: #2C1A0E;
+        background: #FFFAF8;
         font-family: Inter, "Noto Sans Devanagari", "Nirmala UI", "Kohinoor Devanagari", "Mangal", "Arial Unicode MS", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
         font-size: 13px;
         line-height: 1.7;
@@ -154,13 +154,13 @@ export function buildReportSummaryPdfHtml(content: ReportSummaryPdfContent): str
       }
 
       header {
-        border-bottom: 2px solid #0f766e;
+        border-bottom: 2px solid #D85A30;
         padding-bottom: 18px;
         margin-bottom: 22px;
       }
 
       .brand {
-        color: #0f766e;
+        color: #D85A30;
         font-weight: 800;
         font-size: 13px;
         letter-spacing: 0.08em;
@@ -175,7 +175,7 @@ export function buildReportSummaryPdfHtml(content: ReportSummaryPdfContent): str
       }
 
       .meta {
-        color: #475569;
+        color: #993C1D;
         font-size: 12px;
       }
 
@@ -184,7 +184,7 @@ export function buildReportSummaryPdfHtml(content: ReportSummaryPdfContent): str
       h4,
       h5,
       h6 {
-        color: #134e4a;
+        color: #712B13;
         margin: 18px 0 8px;
         line-height: 1.3;
       }
@@ -202,7 +202,7 @@ export function buildReportSummaryPdfHtml(content: ReportSummaryPdfContent): str
 
       hr {
         border: 0;
-        border-top: 1px solid #e2e8f0;
+        border-top: 1px solid #F5C4B3;
         margin: 16px 0;
       }
 
@@ -221,7 +221,7 @@ export function buildReportSummaryPdfHtml(content: ReportSummaryPdfContent): str
       }
 
       strong {
-        color: #020617;
+        color: #2C1A0E;
       }
 
       .summary {
@@ -229,8 +229,8 @@ export function buildReportSummaryPdfHtml(content: ReportSummaryPdfContent): str
       }
 
       .insights {
-        border-left: 4px solid #0f766e;
-        background: #f0fdfa;
+        border-left: 4px solid #D85A30;
+        background: #FAECE7;
         padding: 12px 14px;
         margin-top: 18px;
       }
@@ -239,7 +239,7 @@ export function buildReportSummaryPdfHtml(content: ReportSummaryPdfContent): str
         display: grid;
         grid-template-columns: 30px 1fr;
         gap: 12px;
-        border: 1px solid #dbe7e4;
+        border: 1px solid #F5C4B3;
         border-radius: 8px;
         padding: 12px;
         margin: 10px 0;
@@ -250,8 +250,8 @@ export function buildReportSummaryPdfHtml(content: ReportSummaryPdfContent): str
         width: 30px;
         height: 30px;
         border-radius: 8px;
-        background: #ccfbf1;
-        color: #0f766e;
+        background: #FAECE7;
+        color: #993C1D;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -259,8 +259,8 @@ export function buildReportSummaryPdfHtml(content: ReportSummaryPdfContent): str
       }
 
       .disclaimer {
-        border-top: 1px solid #e2e8f0;
-        color: #64748b;
+        border-top: 1px solid #F5C4B3;
+        color: #712B13;
         font-size: 11px;
         padding-top: 14px;
         margin-top: 24px;

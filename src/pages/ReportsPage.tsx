@@ -24,14 +24,14 @@ export function ReportsPage({ reports, loading, error, onBack, onOpenReport }: R
         <button
           type="button"
           onClick={onBack}
-          className="h-9 px-2 -ml-2 rounded-md text-sm font-bold text-slate-600 hover:text-teal-700 hover:bg-teal-50 transition-colors flex items-center gap-1.5 w-fit"
+          className="h-9 px-2 -ml-2 rounded-md text-sm font-bold text-cocoa hover:text-primary-400 hover:bg-primary-50 transition-colors flex items-center gap-1.5 w-fit"
         >
           <ArrowLeft size={16} />
           Back
         </button>
         <div>
-          <h2 className="text-3xl font-extrabold text-slate-900 mb-3 tracking-tight">Saved Reports</h2>
-          <p className="text-slate-500 font-medium">
+          <h2 className="text-3xl font-extrabold text-ink mb-3 tracking-tight">Saved Reports</h2>
+          <p className="text-clay font-medium">
             Open a completed report to view the saved summary, recommendations, and resources.
           </p>
         </div>
@@ -49,8 +49,8 @@ export function ReportsPage({ reports, loading, error, onBack, onOpenReport }: R
       )}
 
       {loading ? (
-        <div className="bg-white border border-slate-100 rounded-[2rem] p-10 flex items-center justify-center gap-3 text-slate-500 font-bold">
-          <Loader2 className="animate-spin text-sky-600" />
+        <div className="bg-white border border-primary-100 rounded-[2rem] p-10 flex items-center justify-center gap-3 text-clay font-bold">
+          <Loader2 className="animate-spin text-primary-400" />
           Loading saved reports...
         </div>
       ) : reports.length > 0 ? (
@@ -59,17 +59,17 @@ export function ReportsPage({ reports, loading, error, onBack, onOpenReport }: R
             <button
               key={report.id}
               onClick={() => onOpenReport(report.id)}
-              className="w-full text-left bg-white border border-slate-100 rounded-2xl p-5 shadow-sm hover:shadow-md hover:border-sky-200 transition-all"
+              className="w-full text-left bg-white border border-primary-100 rounded-2xl p-5 shadow-sm hover:shadow-md hover:border-primary-200 transition-all"
             >
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div className="min-w-0">
                   <div className="flex items-center gap-3 mb-2">
-                    <div className="w-10 h-10 rounded-xl bg-sky-50 text-sky-600 flex items-center justify-center shrink-0">
+                    <div className="w-10 h-10 rounded-xl bg-primary-50 text-primary-400 flex items-center justify-center shrink-0">
                       <FileText size={20} />
                     </div>
                     <div className="min-w-0">
-                      <h3 className="font-bold text-slate-900 truncate">{report.fileName}</h3>
-                      <p className="text-xs font-bold uppercase tracking-widest text-slate-400">
+                      <h3 className="font-bold text-ink truncate">{report.fileName}</h3>
+                      <p className="text-xs font-bold uppercase tracking-widest text-clay/60">
                         {report.language} - {(report.fileSize / 1024 / 1024).toFixed(2)} MB
                       </p>
                     </div>
@@ -81,22 +81,22 @@ export function ReportsPage({ reports, loading, error, onBack, onOpenReport }: R
                     "px-3 py-1 rounded-full text-xs font-bold border capitalize",
                     report.status === "completed" && "bg-emerald-50 text-emerald-600 border-emerald-100",
                     report.status === "failed" && "bg-rose-50 text-rose-600 border-rose-100",
-                    report.status === "processing" && "bg-sky-50 text-sky-600 border-sky-100",
-                    report.status === "pending" && "bg-slate-50 text-slate-500 border-slate-100"
+                    report.status === "processing" && "bg-accent-50 text-accent-600 border-accent-100",
+                    report.status === "pending" && "bg-primary-50 text-clay border-primary-100"
                   )}>
                     {report.status}
                   </span>
-                  <ChevronRight size={18} className="text-slate-400" />
+                  <ChevronRight size={18} className="text-clay/60" />
                 </div>
               </div>
             </button>
           ))}
         </div>
       ) : (
-        <div className="bg-white border border-slate-100 rounded-[2rem] p-10 text-center">
-          <FileText size={36} className="mx-auto text-slate-300 mb-4" />
-          <h3 className="font-bold text-slate-900 mb-2">No saved reports yet</h3>
-          <p className="text-sm text-slate-500 font-medium">Run an analysis first, then it will appear here.</p>
+        <div className="bg-white border border-primary-100 rounded-[2rem] p-10 text-center">
+          <FileText size={36} className="mx-auto text-primary-100 mb-4" />
+          <h3 className="font-bold text-ink mb-2">No saved reports yet</h3>
+          <p className="text-sm text-clay font-medium">Run an analysis first, then it will appear here.</p>
         </div>
       )}
     </motion.div>

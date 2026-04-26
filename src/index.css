@@ -2,64 +2,145 @@
 
 @theme {
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
-  --color-brand-50: #f0f9ff;
-  --color-brand-100: #e0f2fe;
-  --color-brand-500: #0ea5e9;
-  --color-brand-600: #0284c7;
-  --color-brand-700: #0369a1;
+  --color-primary-50: #FAECE7;
+  --color-primary-100: #F5C4B3;
+  --color-primary-200: #F0997B;
+  --color-primary-400: #D85A30;
+  --color-primary-600: #993C1D;
+  --color-primary-800: #712B13;
+  --color-primary-900: #4A1B0C;
+  --color-accent-50: #FAEEDA;
+  --color-accent-100: #FAC775;
+  --color-accent-200: #EF9F27;
+  --color-accent-400: #BA7517;
+  --color-accent-600: #854F0B;
+  --color-accent-800: #633806;
+  --color-accent-900: #412402;
+  --color-bg: #FFFAF8;
+  --color-surface: #FAECE7;
+  --color-muted: #F5C4B3;
+  --color-ink: #2C1A0E;
+  --color-cocoa: #712B13;
+  --color-clay: #993C1D;
+  --color-card: #FFFFFF;
 }
 
 @layer base {
+  :root {
+    --color-primary-50:  #FAECE7;
+    --color-primary-100: #F5C4B3;
+    --color-primary-200: #F0997B;
+    --color-primary-400: #D85A30;
+    --color-primary-600: #993C1D;
+    --color-primary-800: #712B13;
+    --color-primary-900: #4A1B0C;
+    --color-accent-50:   #FAEEDA;
+    --color-accent-100:  #FAC775;
+    --color-accent-200:  #EF9F27;
+    --color-accent-400:  #BA7517;
+    --color-accent-600:  #854F0B;
+    --color-accent-800:  #633806;
+    --color-accent-900:  #412402;
+    --color-bg:              #FFFAF8;
+    --color-bg-surface:      #FAECE7;
+    --color-bg-muted:        #F5C4B3;
+    --color-text-base:       #2C1A0E;
+    --color-text-muted:      #712B13;
+    --color-text-hint:       #993C1D;
+    --color-text-on-primary: #FAECE7;
+    --color-text-on-accent:  #412402;
+    --color-border:          #F0997B;
+    --color-border-strong:   #D85A30;
+    --btn-primary-bg:        #D85A30;
+    --btn-primary-color:     #FAECE7;
+    --btn-primary-hover-bg:  #993C1D;
+    --btn-accent-bg:         #EF9F27;
+    --btn-accent-color:      #412402;
+    --btn-accent-hover-bg:   #BA7517;
+    --btn-secondary-bg:      #FAECE7;
+    --btn-secondary-color:   #712B13;
+    --btn-secondary-border:  #D85A30;
+    --btn-ghost-bg:          transparent;
+    --btn-ghost-color:       #993C1D;
+    --btn-ghost-border:      #D85A30;
+    --input-border:          #D85A30;
+    --input-focus-ring:      #F0997B;
+    --input-bg:              #FFFAF8;
+    --input-color:           #2C1A0E;
+    --navbar-bg:             #D85A30;
+    --navbar-text:           #FAECE7;
+    --navbar-link-muted:     #F5C4B3;
+    --navbar-accent:         #EF9F27;
+    --card-bg:               #FFFFFF;
+    --card-border:           #F5C4B3;
+    --card-img-bg:           #FAECE7;
+    --badge-new-bg:          #FAECE7;
+    --badge-new-color:       #712B13;
+    --badge-hot-bg:          #F0997B;
+    --badge-hot-color:       #712B13;
+    --badge-sale-bg:         #FAEEDA;
+    --badge-sale-color:      #633806;
+    --badge-pro-bg:          #D85A30;
+    --badge-pro-color:       #FAECE7;
+    --radius-sm:   6px;
+    --radius-md:   8px;
+    --radius-lg:   12px;
+    --radius-full: 999px;
+  }
+
   body {
-    @apply bg-slate-50 text-slate-900 antialiased;
+    @apply bg-bg text-ink antialiased;
+    background:
+      radial-gradient(circle at top left, rgb(250 199 117 / 0.22), transparent 32rem),
+      linear-gradient(180deg, #FFFAF8 0%, #FAECE7 100%);
   }
 
   .markdown-content h1 {
-    @apply text-2xl font-bold mb-4 mt-6 text-slate-900 tracking-tight leading-tight;
+    @apply text-2xl font-bold mb-4 mt-6 text-ink tracking-tight leading-tight;
   }
   .markdown-content h2 {
-    @apply text-xl font-bold mb-3 mt-6 text-slate-800 border-b border-slate-200 pb-2 tracking-tight leading-tight;
+    @apply text-xl font-bold mb-3 mt-6 text-cocoa border-b border-primary-100 pb-2 tracking-tight leading-tight;
   }
   .markdown-content h3 {
-    @apply text-lg font-bold mb-2 mt-5 text-slate-800 tracking-tight leading-tight;
+    @apply text-lg font-bold mb-2 mt-5 text-cocoa tracking-tight leading-tight;
   }
   .markdown-content p {
-    @apply mb-4 last:mb-0 text-slate-700 leading-8;
+    @apply mb-4 last:mb-0 text-cocoa leading-8;
   }
   .markdown-content ul {
-    @apply list-disc pl-5 mb-5 space-y-2 text-slate-700 leading-8;
+    @apply list-disc pl-5 mb-5 space-y-2 text-cocoa leading-8;
   }
   .markdown-content ol {
-    @apply list-decimal pl-5 mb-5 space-y-2 text-slate-700 leading-8;
+    @apply list-decimal pl-5 mb-5 space-y-2 text-cocoa leading-8;
   }
   .markdown-content li {
     @apply pl-2;
   }
   .markdown-content strong {
-    @apply font-semibold text-slate-900;
+    @apply font-semibold text-ink;
   }
   .markdown-content blockquote {
-    @apply border-l-4 border-teal-200 bg-teal-50/50 p-4 text-slate-700 my-6 rounded-r-lg;
+    @apply border-l-4 border-primary-200 bg-primary-50/60 p-4 text-cocoa my-6 rounded-r-lg;
   }
 
   .insight-markdown p {
-    @apply m-0 text-slate-800 leading-8;
+    @apply m-0 text-cocoa leading-8;
   }
 
   .insight-markdown strong {
-    @apply font-extrabold text-slate-950;
+    @apply font-extrabold text-ink;
   }
 
   .recommendation-markdown p {
-    @apply mb-3 last:mb-0 text-slate-700 leading-7;
+    @apply mb-3 last:mb-0 text-cocoa leading-7;
   }
 
   .recommendation-markdown ul {
-    @apply list-disc pl-5 my-3 space-y-2 text-slate-700 leading-7;
+    @apply list-disc pl-5 my-3 space-y-2 text-cocoa leading-7;
   }
 
   .recommendation-markdown ol {
-    @apply list-decimal pl-5 my-3 space-y-2 text-slate-700 leading-7;
+    @apply list-decimal pl-5 my-3 space-y-2 text-cocoa leading-7;
   }
 
   .recommendation-markdown li {
@@ -67,17 +148,17 @@
   }
 
   .recommendation-markdown strong {
-    @apply font-extrabold text-slate-950;
+    @apply font-extrabold text-ink;
   }
 
   .recommendation-markdown em {
-    @apply text-slate-600;
+    @apply text-clay;
   }
 }
 
 @layer components {
   .glass-card {
-    @apply bg-white/70 backdrop-blur-xl border border-white/20 shadow-xl shadow-slate-200/50;
+    @apply bg-white/75 backdrop-blur-xl border border-primary-100/70 shadow-xl shadow-primary-100/40;
   }
   
   .bento-grid {
