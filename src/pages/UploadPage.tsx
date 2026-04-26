@@ -16,43 +16,62 @@ import {
   Sparkles,
   Stethoscope,
   Search,
+  X,
   Upload,
 } from "lucide-react";
 import { cn } from "@/src/lib/utils";
 import type { LanguageOption } from "@/src/types/report";
 
 interface UploadPageProps {
-  file: File | null;
+  files: File[];
   loading: boolean;
   error: string | null;
   language: string;
   languages: LanguageOption[];
-  onFileSelected: (file: File) => void;
+  onFilesSelected: (files: File[]) => void;
   onLanguageChange: (language: string) => void;
   onProcessReport: () => void;
 }
 
-function ReportPreview({ file }: { file: File | null }) {
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+const MAX_REPORT_FILES = 4;
+
+function formatFileSize(bytes: number): string {
+  return `${(bytes / 1024 / 1024).toFixed(2)} MB`;
+}
+
+function isPdfFile(file: File): boolean {
+  return file.type === "application/pdf";
+}
+
+function isImageFile(file: File): boolean {
+  return file.type.startsWith("image/");
+}
+
+function ReportPreview({ files }: { files: File[] }) {
+  const [previewUrls, setPreviewUrls] = useState<{ file: File; url: string }[]>([]);
 
   useEffect(() => {
-    if (!file) {
-      setPreviewUrl(null);
+    if (files.length === 0) {
+      setPreviewUrls([]);
       return;
     }
 
-    const objectUrl = URL.createObjectURL(file);
-    setPreviewUrl(objectUrl);
+    const nextPreviewUrls = files.map((file) => ({
+      file,
+      url: URL.createObjectURL(file),
+    }));
+    setPreviewUrls(nextPreviewUrls);
 
-    return () => URL.revokeObjectURL(objectUrl);
-  }, [file]);
+    return () => {
+      nextPreviewUrls.forEach((preview) => URL.revokeObjectURL(preview.url));
+    };
+  }, [files]);
 
-  if (!file || !previewUrl) {
+  if (previewUrls.length === 0) {
     return null;
   }
 
-  const isImage = file.type.startsWith("image/");
-  const isPdf = file.type === "application/pdf";
+  const hasPdf = files.some(isPdfFile);
 
   return (
     <motion.section
@@ -67,32 +86,51 @@ function ReportPreview({ file }: { file: File | null }) {
           </div>
           <div>
             <h3 className="text-sm font-extrabold text-ink">Report preview</h3>
-            <p className="mt-0.5 max-w-xl truncate text-xs font-semibold text-clay">{file.name}</p>
+            <p className="mt-0.5 max-w-xl truncate text-xs font-semibold text-clay">
+              {files.length} {files.length === 1 ? "file" : "files"} selected
+            </p>
           </div>
         </div>
         <span className="w-fit rounded-full border border-primary-100 bg-white px-3 py-1 text-[11px] font-black uppercase tracking-widest text-primary-600">
-          {isPdf ? "PDF" : isImage ? "Image" : "File"}
+          {hasPdf ? "Single PDF" : `Max ${MAX_REPORT_FILES} images`}
         </span>
       </div>
 
       <div className="bg-white p-4">
-        {isImage ? (
-          <div className="flex max-h-[420px] min-h-64 items-center justify-center overflow-hidden rounded-md border border-primary-100 bg-white">
-            <img src={previewUrl} alt={`Preview of ${file.name}`} className="max-h-[420px] w-full object-contain" />
-          </div>
-        ) : isPdf ? (
-          <iframe
-            src={`${previewUrl}#toolbar=0&navpanes=0`}
-            title={`Preview of ${file.name}`}
-            className="h-[420px] w-full rounded-md border border-primary-100 bg-white"
-          />
-        ) : (
-          <div className="flex min-h-48 flex-col items-center justify-center rounded-md border border-primary-100 bg-white p-6 text-center">
-            <FileText size={34} className="mb-3 text-primary-400" />
-            <p className="text-sm font-extrabold text-ink">Preview is not available for this file type.</p>
-            <p className="mt-1 text-xs font-medium text-clay">The file is selected and ready for analysis.</p>
-          </div>
-        )}
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          {previewUrls.map(({ file, url }, index) => {
+            const isImage = isImageFile(file);
+            const isPdf = isPdfFile(file);
+
+            return (
+              <div key={`${file.name}-${file.lastModified}-${index}`} className="overflow-hidden rounded-md border border-primary-100 bg-white">
+                <div className="flex items-center justify-between gap-3 border-b border-primary-100 bg-primary-50/40 px-3 py-2">
+                  <p className="truncate text-xs font-extrabold text-ink">{file.name}</p>
+                  <span className="shrink-0 rounded-full bg-white px-2 py-0.5 text-[10px] font-black uppercase text-primary-600">
+                    {isPdf ? "PDF" : isImage ? "Image" : "File"}
+                  </span>
+                </div>
+                {isImage ? (
+                  <div className="flex h-56 items-center justify-center bg-white">
+                    <img src={url} alt={`Preview of ${file.name}`} className="h-full w-full object-contain" />
+                  </div>
+                ) : isPdf ? (
+                  <iframe
+                    src={`${url}#toolbar=0&navpanes=0`}
+                    title={`Preview of ${file.name}`}
+                    className="h-64 w-full bg-white"
+                  />
+                ) : (
+                  <div className="flex h-56 flex-col items-center justify-center p-6 text-center">
+                    <FileText size={30} className="mb-3 text-primary-400" />
+                    <p className="text-sm font-extrabold text-ink">Preview is not available.</p>
+                    <p className="mt-1 text-xs font-medium text-clay">This file is ready for analysis.</p>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
       </div>
     </motion.section>
   );
@@ -195,20 +233,51 @@ function LanguagePicker({
 }
 
 export function UploadPage({
-  file,
+  files,
   loading,
   error,
   language,
   languages,
-  onFileSelected,
+  onFilesSelected,
   onLanguageChange,
   onProcessReport,
 }: UploadPageProps) {
   const onDrop = useCallback((acceptedFiles: File[]) => {
     if (acceptedFiles.length > 0) {
-      onFileSelected(acceptedFiles[0]);
+      const acceptedPdf = acceptedFiles.find(isPdfFile);
+
+      if (acceptedPdf) {
+        onFilesSelected([acceptedPdf]);
+        return;
+      }
+
+      const acceptedImages = acceptedFiles.filter(isImageFile);
+      const existingImages = files.filter(isImageFile);
+      const nextFiles = [...existingImages, ...acceptedImages]
+        .filter((file, index, allFiles) =>
+          allFiles.findIndex((candidate) =>
+            candidate.name === file.name &&
+            candidate.size === file.size &&
+            candidate.lastModified === file.lastModified
+          ) === index
+        )
+        .slice(0, MAX_REPORT_FILES);
+
+      onFilesSelected(nextFiles);
     }
-  }, [onFileSelected]);
+  }, [files, onFilesSelected]);
+
+  const removeFile = (fileToRemove: File) => {
+    onFilesSelected(files.filter((file) => file !== fileToRemove));
+  };
+
+  const clearFiles = () => {
+    onFilesSelected([]);
+  };
+
+  const totalFileSize = files.reduce((total, file) => total + file.size, 0);
+  const hasPdf = files.some(isPdfFile);
+  const canAddMoreFiles = !hasPdf && files.length < MAX_REPORT_FILES;
 
   const { getRootProps, getInputProps, isDragActive, open } = useDropzone({
     onDrop,
@@ -217,7 +286,7 @@ export function UploadPage({
       "image/png": [".png"],
       "image/jpeg": [".jpg", ".jpeg"],
     },
-    multiple: false,
+    multiple: true,
     noClick: true,
   });
 
@@ -285,30 +354,60 @@ export function UploadPage({
                   className={cn(
                     "min-h-52 rounded-lg border-2 border-dashed p-5 flex flex-col items-center justify-center text-center transition-all",
                     isDragActive ? "border-primary-400 bg-primary-50" : "border-primary-200 bg-white",
-                    file && "border-emerald-300 bg-emerald-50/20"
+                    files.length > 0 && "border-emerald-300 bg-emerald-50/20"
                   )}
                 >
                   <input {...getInputProps()} />
                   <div className={cn(
                     "mb-4 flex h-14 w-14 items-center justify-center rounded-full shadow-sm",
-                    file ? "bg-emerald-600 text-white" : "bg-primary-50 text-primary-600"
+                    files.length > 0 ? "bg-emerald-600 text-white" : "bg-primary-50 text-primary-600"
                   )}>
-                    {file ? <CheckCircle2 size={24} /> : <Upload size={24} />}
+                    {files.length > 0 ? <CheckCircle2 size={24} /> : <Upload size={24} />}
                   </div>
-                  {file ? (
+                  {files.length > 0 ? (
                     <>
-                      <p className="max-w-lg text-base font-extrabold text-ink break-words">{file.name}</p>
-                      <p className="mt-2 text-sm font-bold text-emerald-700">{(file.size / 1024 / 1024).toFixed(2)} MB - Ready to analyze</p>
-                      <button type="button" onClick={open} className="mt-4 h-10 px-6 rounded-md bg-white border border-primary-100 text-sm font-bold text-primary-600 hover:bg-primary-50 transition-colors inline-flex items-center gap-2">
-                        <FileText size={16} />
-                        Choose Different File
-                      </button>
+                      <p className="max-w-lg text-base font-extrabold text-ink break-words">
+                        {files.length} {files.length === 1 ? "file" : "files"} selected
+                      </p>
+                      <p className="mt-2 text-sm font-bold text-emerald-700">{formatFileSize(totalFileSize)} - Ready to analyze</p>
+                      <div className="mt-4 w-full max-w-2xl space-y-2">
+                        {files.map((selectedFile) => (
+                          <div key={`${selectedFile.name}-${selectedFile.lastModified}`} className="flex items-center justify-between gap-3 rounded-lg border border-primary-100 bg-white px-3 py-2 text-left">
+                            <div className="min-w-0">
+                              <p className="truncate text-sm font-bold text-ink">{selectedFile.name}</p>
+                              <p className="text-xs font-semibold text-clay">{formatFileSize(selectedFile.size)}</p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => removeFile(selectedFile)}
+                              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-clay transition-colors hover:bg-primary-50 hover:text-primary-600"
+                              aria-label={`Remove ${selectedFile.name}`}
+                            >
+                              <X size={16} />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
+                        <button
+                          type="button"
+                          onClick={open}
+                          disabled={!canAddMoreFiles}
+                          className="h-10 px-6 rounded-md bg-white border border-primary-100 text-sm font-bold text-primary-600 hover:bg-primary-50 disabled:cursor-not-allowed disabled:opacity-50 transition-colors inline-flex items-center gap-2"
+                        >
+                          <FileText size={16} />
+                          {hasPdf ? "PDF selected" : "Add More Images"}
+                        </button>
+                        <button type="button" onClick={clearFiles} className="h-10 px-4 rounded-md text-sm font-bold text-clay hover:bg-primary-50 hover:text-primary-600 transition-colors">
+                          Clear all
+                        </button>
+                      </div>
                     </>
                   ) : (
                     <>
                       <p className="text-sm font-extrabold text-ink">Drag and drop your report here</p>
                       <p className="mt-1 text-xs text-clay">or click to browse files from your device</p>
-                      <p className="mt-2 text-xs text-clay">Supported formats: PDF, JPG, PNG &nbsp;-&nbsp; Max size: 25MB</p>
+                      <p className="mt-2 text-xs text-clay">Upload 1 PDF or up to {MAX_REPORT_FILES} images (JPG/PNG).</p>
                       <button type="button" onClick={open} className="mt-4 h-10 px-6 rounded-md bg-primary-400 text-primary-50 text-sm font-bold hover:bg-primary-600 transition-colors flex items-center gap-2">
                         <FolderOpen size={15} />
                         Browse Files
@@ -327,11 +426,11 @@ export function UploadPage({
 
                 <button
                   type="button"
-                  disabled={!file || loading}
+                  disabled={files.length === 0 || loading}
                   onClick={onProcessReport}
                   className={cn(
                     "h-12 w-full rounded-md text-base font-extrabold transition-all flex items-center justify-center gap-3 border",
-                    !file || loading
+                    files.length === 0 || loading
                       ? "border-primary-100 bg-primary-50 text-primary-100 cursor-not-allowed"
                       : "border-primary-400 bg-primary-400 text-primary-50 hover:bg-primary-600 shadow-sm shadow-primary-100"
                   )}
@@ -348,7 +447,7 @@ export function UploadPage({
             </div>
           </section>
 
-          <ReportPreview file={file} />
+          <ReportPreview files={files} />
         </div>
 
         <aside className="space-y-4">

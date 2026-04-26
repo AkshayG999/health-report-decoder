@@ -2,10 +2,17 @@ import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
 import { StateGraph, START, END } from "@langchain/langgraph";
 import { Annotation } from "@langchain/langgraph";
 
+interface ReportFileInput {
+  fileName: string;
+  mimeType: string;
+  data: string;
+}
+
 // Define the state for our graph
 const ReportState = Annotation.Root({
-  fileData: Annotation<string>(), // Base64 encoded file
+  fileData: Annotation<string>(), // Legacy single-file input.
   mimeType: Annotation<string>(),
+  files: Annotation<ReportFileInput[]>(),
   language: Annotation<string>(), // Preferred patient-facing language.
   rawExtraction: Annotation<string>(),
   simplifiedReport: Annotation<string>(),
@@ -26,16 +33,25 @@ const getModel = () => {
   return new ChatGoogleGenerativeAI({
     apiKey,
     model: "gemini-3-flash-preview",
-    maxOutputTokens: 2048,
+    maxOutputTokens: 5048,
   });
 };
 
 // Node 1: Extract information
 const extractNode = async (state: ReportStateType) => {
   const model = getModel();
+  const files = state.files?.length
+    ? state.files
+    : state.fileData && state.mimeType
+      ? [{ fileName: "Medical report", mimeType: state.mimeType, data: state.fileData }]
+      : [];
+
+  if (files.length === 0) {
+    throw new Error("No report files were provided for extraction.");
+  }
   
   const prompt = `You are a medical data extraction expert. 
-  Extract all relevant information from this medical report. 
+  Extract all relevant information from the attached medical report file${files.length > 1 ? "s" : ""}. 
   Include: 
   - Patient demographics (if available)
   - Date of report
@@ -44,18 +60,22 @@ const extractNode = async (state: ReportStateType) => {
   - Reference ranges and abnormal values
   - Doctor's impressions/conclusions.
   
-  Be precise and thorough. The extraction should be in English for internal processing.`;
+  Be precise and thorough. If multiple files are provided, combine them into one coherent extraction and mention which file each major finding came from when useful.
+  The extraction should be in English for internal processing.
+  
+  Attached files:
+  ${files.map((file, index) => `${index + 1}. ${file.fileName} (${file.mimeType})`).join("\n")}`;
 
   const response = await model.invoke([
     {
       role: "user",
       content: [
         { type: "text", text: prompt },
-        {
+        ...files.map((file) => ({
           type: "media",
-          mimeType: state.mimeType,
-          data: state.fileData,
-        },
+          mimeType: file.mimeType,
+          data: file.data,
+        })),
       ],
     },
   ]);

@@ -42,7 +42,7 @@ const languages: LanguageOption[] = [
 export default function App() {
   const navigate = useNavigate();
   const location = useLocation();
-  const [file, setFile] = useState<File | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<ReportResult | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -73,7 +73,7 @@ export default function App() {
   };
 
   const processReport = async () => {
-    if (!file) return;
+    if (files.length === 0) return;
 
     setLoading(true);
     navigate("/processing");
@@ -83,10 +83,16 @@ export default function App() {
 
     try {
       try {
+        const totalFileSize = files.reduce((total, selectedFile) => total + selectedFile.size, 0);
+        const fileName = files.length === 1
+          ? files[0].name
+          : `${files.length} files: ${files.map((selectedFile) => selectedFile.name).join(", ")}`;
+        const mimeType = files.length === 1 ? files[0].type : "multiple";
+
         const saveResponse = await saveReportToAPI({
-          fileName: file.name,
-          fileSize: file.size,
-          mimeType: file.type,
+          fileName,
+          fileSize: totalFileSize,
+          mimeType,
           language,
         });
         reportId = saveResponse.reportId;
@@ -94,15 +100,22 @@ export default function App() {
         throw new Error("Could not connect to the report database API. Please start the backend server and try again.");
       }
 
-      const base64Data = await fileToBase64(file);
+      const reportFiles = await Promise.all(
+        files.map(async (selectedFile) => ({
+          fileName: selectedFile.name,
+          mimeType: selectedFile.type,
+          data: await fileToBase64(selectedFile),
+        }))
+      );
 
       if (reportId) {
         await updateReportAnalysis(reportId, { status: "processing" });
       }
 
       const stream = await reportProcessor.stream({
-        fileData: base64Data,
-        mimeType: file.type,
+        fileData: reportFiles[0]?.data,
+        mimeType: reportFiles[0]?.mimeType,
+        files: reportFiles,
         language,
       }, { streamMode: "updates" });
 
@@ -167,7 +180,7 @@ export default function App() {
   };
 
   const reset = () => {
-    setFile(null);
+    setFiles([]);
     setResult(null);
     setError(null);
     navigate("/");
@@ -310,13 +323,13 @@ export default function App() {
               path="/"
               element={
                 <UploadPage
-                  file={file}
+                  files={files}
                   loading={loading}
                   error={error}
                   language={language}
                   languages={languages}
-                  onFileSelected={(selectedFile) => {
-                    setFile(selectedFile);
+                  onFilesSelected={(selectedFiles) => {
+                    setFiles(selectedFiles);
                     setError(null);
                   }}
                   onLanguageChange={setLanguage}
